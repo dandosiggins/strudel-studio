@@ -18,5 +18,6 @@ export default defineConfig({
     host: true,
     port: parseInt(process.env.PORT) || 4173,
     strictPort: false,
+    allowedHosts: ['strudel-studio-production.up.railway.app'],
   },
 });
