@@ -2,9 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { webaudioRepl } from '@strudel/webaudio';
 import { evalScope } from '@strudel/core';
 import { transpiler } from '@strudel/transpiler';
-import { getAudioContext, getSuperdoughAudioController, registerSynthSounds, registerZZFXSounds } from 'superdough';
-// samples is imported here when the TODO above is re-enabled for production
-// import { samples } from 'superdough';
+import { getAudioContext, getSuperdoughAudioController, registerSynthSounds, registerZZFXSounds, samples } from 'superdough';
 
 registerSynthSounds();
 registerZZFXSounds();
@@ -24,11 +22,9 @@ export default function useStrudel() {
   const streamRef = useRef(null);
 
   useEffect(() => {
-    // TODO: uncomment for production deployment — CORS blocks strudel.cc from localhost
-    // samples('https://strudel.cc/strudel.json')
-    //   .then(() => setSamplesLoaded(true))
-    //   .catch(() => setSamplesLoaded(true));
-    setSamplesLoaded(true);
+    samples('https://strudel.cc/strudel.json')
+      .then(() => setSamplesLoaded(true))
+      .catch(() => setSamplesLoaded(true));
   }, []);
 
   const ensureEngine = useCallback(() => {
