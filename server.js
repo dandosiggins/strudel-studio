@@ -9,6 +9,9 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Health-check — hit /api/test to confirm Express is running (not vite preview)
+app.get('/api/test', (_req, res) => res.json({ status: 'proxy server running', node: process.version }));
+
 // Proxy /api/strudel/* → https://strudel.cc/* server-side (no browser CORS)
 app.use(
   '/api/strudel',
@@ -28,4 +31,4 @@ app.use((_req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Express proxy server running on port ${PORT} (node ${process.version})`));
