@@ -10,27 +10,31 @@ export default function Controls({
   onStop,
   isRecording,
   isConverting,
+  samplesLoaded,
   onStartRecording,
   onStopRecording,
   recordingTime,
   error,
 }) {
+  const playBlocked = !samplesLoaded || isPlaying || isRecording;
+
   return (
     <div className="border-b border-gray-800 bg-gray-900 px-4 py-2 flex flex-col gap-1.5" style={{ flexShrink: 0 }}>
       <div className="flex items-center gap-2 flex-wrap">
 
-        {/* Play — disabled while a recording session owns the scheduler */}
+        {/* Play — disabled until samples resolve, while playing, or while recording */}
         <button
           onClick={onPlay}
-          disabled={isPlaying || isRecording}
-          title={isRecording ? 'Stop recording first' : undefined}
+          disabled={playBlocked}
+          title={!samplesLoaded ? 'Loading samples…' : isRecording ? 'Stop recording first' : undefined}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            isPlaying || isRecording
+            playBlocked
               ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
               : 'bg-emerald-600 hover:bg-emerald-500 text-white'
           }`}
         >
-          <PlayIcon /> Play
+          {!samplesLoaded ? <SpinnerIcon /> : <PlayIcon />}
+          {!samplesLoaded ? 'Loading…' : 'Play'}
         </button>
 
         {/* Stop — red when active, clearly disabled when idle */}
@@ -52,9 +56,9 @@ export default function Controls({
         {!isRecording ? (
           <button
             onClick={onStartRecording}
-            disabled={isConverting}
+            disabled={isConverting || !samplesLoaded}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium border transition-colors ${
-              isConverting
+              isConverting || !samplesLoaded
                 ? 'bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed'
                 : 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border-gray-700'
             }`}
@@ -108,6 +112,15 @@ function StopIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
       <rect x="2" y="2" width="8" height="8" />
+    </svg>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+      strokeLinecap="round" className="animate-spin">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
     </svg>
   );
 }

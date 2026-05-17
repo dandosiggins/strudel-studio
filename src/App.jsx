@@ -85,6 +85,7 @@ export default function App() {
           isPlaying={isPlaying}
           isRecording={isRecording}
           isConverting={isConverting}
+          samplesLoaded={samplesLoaded}
           onPlay={() => play(code)}
           onStop={stop}
           onStartRecording={handleRecordStart}
