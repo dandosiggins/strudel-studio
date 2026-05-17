@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { webaudioRepl } from '@strudel/webaudio';
 import { evalScope } from '@strudel/core';
 import { transpiler } from '@strudel/transpiler';
-import { getAudioContext, getSuperdoughAudioController, registerSynthSounds, registerZZFXSounds, samples } from 'superdough';
+import { getAudioContext, getSuperdoughAudioController, registerSynthSounds, registerZZFXSounds, samples, soundMap } from 'superdough';
 
 registerSynthSounds();
 registerZZFXSounds();
@@ -23,7 +23,25 @@ export default function useStrudel() {
 
   useEffect(() => {
     samples('https://strudel.cc/strudel.json')
-      .then(() => setSamplesLoaded(true))
+      .then(() => {
+        setSamplesLoaded(true);
+        // Pre-fetch sample audio bytes into the browser's HTTP cache.
+        // Without this, loadBuffer() does a cold network fetch (~300ms) while the
+        // scheduler's target time is only 100ms away, so ac.currentTime > targetTime
+        // and superdough silently drops every note on first play.
+        // We limit to a small whitelist of common banks to avoid downloading the
+        // entire sample library.
+        const PREFETCH_BANKS = ['piano', 'bd', 'sd', 'hh', 'cp'];
+        const all = soundMap.get();
+        for (const name of PREFETCH_BANKS) {
+          const bank = all[name]?.data?.samples;
+          if (!bank) continue;
+          const urls = Array.isArray(bank) ? bank : Object.values(bank).flat();
+          urls.forEach(url => {
+            if (typeof url === 'string') fetch(url, { mode: 'cors' }).catch(() => {});
+          });
+        }
+      })
       .catch(() => setSamplesLoaded(true));
   }, []);
 
