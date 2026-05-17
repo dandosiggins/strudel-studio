@@ -22,7 +22,11 @@ export default function useStrudel() {
   const streamRef = useRef(null);
 
   useEffect(() => {
-    samples('https://strudel.cc/strudel.json')
+    // Pass the proxy base URL as the second argument so superdough builds
+    // all sample file paths as /api/strudel/... rather than https://strudel.cc/...
+    // Both the manifest and every WAV fetch go through the Express proxy,
+    // which is server-to-server and has no CORS restriction.
+    samples('/api/strudel/strudel.json', '/api/strudel/')
       .then(() => {
         setSamplesLoaded(true);
         // Pre-fetch sample audio bytes into the browser's HTTP cache.

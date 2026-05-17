@@ -6,11 +6,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/strudel-cdn': {
+      '/api/strudel': {
         target: 'https://strudel.cc',
         changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/strudel-cdn/, ''),
+        rewrite: (path) => path.replace(/^\/api\/strudel/, ''),
       },
     },
   },

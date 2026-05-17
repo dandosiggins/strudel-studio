@@ -7,7 +7,7 @@
     "dev": "vite --open",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "vite preview --port $PORT --host"
+    "start": "node server.js"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.2",
@@ -23,6 +23,8 @@
     "@tailwindcss/vite": "^4.3.0",
     "@uiw/react-codemirror": "^4.25.9",
     "audiobuffer-to-wav": "^1.0.0",
+    "express": "^5.2.1",
+    "http-proxy-middleware": "^4.0.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tailwindcss": "^4.3.0"
