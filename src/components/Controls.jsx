@@ -19,6 +19,8 @@ export default function Controls({
   onBpmChange,
   showCheatSheet,
   onToggleCheatSheet,
+  showTutorial,
+  onToggleTutorial,
 }) {
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
@@ -124,6 +126,18 @@ export default function Controls({
         <div className="w-px h-5 bg-gray-700" />
 
         <button
+          onClick={onToggleTutorial}
+          title={showTutorial ? 'Hide tutorial' : 'Open tutorial'}
+          className={`flex items-center justify-center gap-1.5 px-2.5 h-7 rounded text-xs font-medium transition-colors ${
+            showTutorial
+              ? 'bg-indigo-700 text-white'
+              : 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700'
+          }`}
+        >
+          <GradCapIcon /> Learn
+        </button>
+
+        <button
           onClick={onToggleCheatSheet}
           title={showCheatSheet ? 'Hide cheat sheet' : 'Show cheat sheet'}
           className={`flex items-center justify-center w-7 h-7 rounded text-sm font-semibold transition-colors ${
@@ -175,6 +189,22 @@ function RecordDot({ className }) {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" className={className}>
       <circle cx="5" cy="5" r="4.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+function GradCapIcon() {
+  return (
+    <svg width="13" height="11" viewBox="0 0 15 12" fill="currentColor">
+      <polygon points="7.5,0 15,4 7.5,8 0,4" />
+      <path
+        d="M3 5.5 L3 9 Q7.5 11.5 12 9 L12 5.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

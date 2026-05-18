@@ -57,7 +57,7 @@ const SECTIONS = [
 
 export default function CheatSheet({ onInsert }) {
   return (
-    <div className="h-full flex flex-col bg-gray-900 border-l border-gray-800 overflow-y-auto" style={{ width: 280 }}>
+    <div className="h-full flex flex-col bg-gray-900 border-l border-gray-800 overflow-y-auto" style={{ width: 300 }}>
       <div className="px-3 py-2 border-b border-gray-800 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Cheat Sheet</span>
         <span className="text-xs text-gray-600 ml-auto">click to insert</span>
