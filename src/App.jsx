@@ -39,7 +39,7 @@ export default function App() {
   }, [bpm, setCps]);
   const { isRecording, isConverting, startRecording, stopRecording, recordingTime } =
     useRecorder(getStream);
-  const { patterns, savePattern, deletePattern, renamePattern, importPatterns } = usePatterns();
+  const { patterns, savePattern, deletePattern, renamePattern, renameCategory, deleteCategory, importPatterns } = usePatterns();
 
   function handleLoad(pattern) {
     setCode(pattern.code);
@@ -51,8 +51,8 @@ export default function App() {
     setPatternName('Untitled');
   }
 
-  function handleSave(name) {
-    savePattern(name, code);
+  function handleSave(name, category) {
+    savePattern(name, code, category);
     setPatternName(name);
   }
 
@@ -144,6 +144,8 @@ export default function App() {
         onLoad={handleLoad}
         onDelete={deletePattern}
         onRename={renamePattern}
+        onRenameCategory={renameCategory}
+        onDeleteCategory={deleteCategory}
         onNew={handleNew}
         onImport={importPatterns}
       />
