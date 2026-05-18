@@ -3,7 +3,7 @@ import { useRef, useEffect, useCallback } from 'react';
 const H = 80;
 const BAR_COUNT = 80;
 
-export default function Visualizer({ isPlaying, getAnalyser }) {
+export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }) {
   const canvasRef = useRef(null);
   const ctx2dRef = useRef(null);
   const wRef = useRef(0);
@@ -88,7 +88,7 @@ export default function Visualizer({ isPlaying, getAnalyser }) {
       }
     };
 
-    if (isPlaying) {
+    if (isPlaying && vizEnabled) {
       animate();
     } else {
       cancelAnimationFrame(rafRef.current);
@@ -96,7 +96,7 @@ export default function Visualizer({ isPlaying, getAnalyser }) {
     }
 
     return () => cancelAnimationFrame(rafRef.current);
-  }, [isPlaying, getAnalyser, drawIdle]);
+  }, [isPlaying, vizEnabled, getAnalyser, drawIdle]);
 
   return (
     <canvas

@@ -28,6 +28,7 @@ export default function App() {
   const [showAI, setShowAI] = useState(false);
   const [showGenres, setShowGenres] = useState(false);
   const [isPerformanceMode, setIsPerformanceMode] = useState(false);
+  const [vizEnabled, setVizEnabled] = useState(true);
   const editorViewRef = useRef(null);
 
   const { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, getAnalyser, setCps } = useStrudel();
@@ -129,6 +130,7 @@ export default function App() {
         onStartRecording={handleRecordStart}
         onStopRecording={handleRecordStop}
         onExit={handleExitPerformance}
+        vizEnabled={vizEnabled}
       />
     )}
     <div
@@ -186,6 +188,8 @@ export default function App() {
           onToggleGenres={() => { setShowGenres(v => !v); setShowCheatSheet(false); setShowTutorial(false); setShowChallenges(false); setShowAI(false); }}
           showAI={showAI}
           onToggleAI={() => { setShowAI(v => !v); setShowCheatSheet(false); setShowTutorial(false); setShowChallenges(false); setShowGenres(false); }}
+          vizEnabled={vizEnabled}
+          onToggleViz={() => setVizEnabled(v => !v)}
           onEnterPerformance={handleEnterPerformance}
           onStop={stop}
           onStartRecording={handleRecordStart}
@@ -194,7 +198,7 @@ export default function App() {
           error={error}
         />
 
-        <Visualizer isPlaying={isPlaying} getAnalyser={getAnalyser} />
+        <Visualizer isPlaying={isPlaying} getAnalyser={getAnalyser} vizEnabled={vizEnabled} />
 
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           <Editor

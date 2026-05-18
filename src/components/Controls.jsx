@@ -27,6 +27,8 @@ export default function Controls({
   onToggleGenres,
   showAI,
   onToggleAI,
+  vizEnabled,
+  onToggleViz,
   onEnterPerformance,
 }) {
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
@@ -181,6 +183,18 @@ export default function Controls({
         </button>
 
         <button
+          onClick={onToggleViz}
+          title={vizEnabled ? 'Disable visualizer (diagnostic)' : 'Enable visualizer'}
+          className={`flex items-center justify-center w-7 h-7 rounded text-sm transition-colors ${
+            vizEnabled
+              ? 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700'
+              : 'bg-yellow-900 text-yellow-400 border border-yellow-700'
+          }`}
+        >
+          <VizToggleIcon enabled={vizEnabled} />
+        </button>
+
+        <button
           onClick={onToggleCheatSheet}
           title={showCheatSheet ? 'Hide cheat sheet' : 'Show cheat sheet'}
           className={`flex items-center justify-center w-7 h-7 rounded text-sm font-semibold transition-colors ${
@@ -284,6 +298,16 @@ function SparkleIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
       <path d="M8 0 L9.5 6.5 L16 8 L9.5 9.5 L8 16 L6.5 9.5 L0 8 L6.5 6.5 Z" />
+    </svg>
+  );
+}
+
+function VizToggleIcon({ enabled }) {
+  return (
+    <svg width="12" height="10" viewBox="0 0 14 11" fill="none" stroke="currentColor"
+      strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="1,6 3,3 5,8 7,4 9,7 11,5 13,6" />
+      {!enabled && <line x1="1" y1="1" x2="13" y2="11" stroke="currentColor" strokeWidth="1.5" />}
     </svg>
   );
 }

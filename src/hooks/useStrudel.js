@@ -84,10 +84,20 @@ export default function useStrudel() {
     await scopeReady;
     const existing = getAudioContext();
     if (!existing || existing.state === 'closed') {
-      setAudioContext(new AudioContext({ latencyHint: 'playback' }));
+      const newCtx = new AudioContext({ latencyHint: 'playback' });
+      newCtx.addEventListener('statechange', () => {
+        console.log('[audio] AudioContext statechange →', newCtx.state);
+      });
+      setAudioContext(newCtx);
+      console.log('[audio] AudioContext created — sampleRate:', newCtx.sampleRate,
+        '| baseLatency:', newCtx.baseLatency?.toFixed(4) ?? 'n/a', 's',
+        '| outputLatency:', newCtx.outputLatency?.toFixed(4) ?? 'n/a', 's');
     }
     const ctx = getAudioContext();
-    if (ctx.state === 'suspended') await ctx.resume();
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+      console.log('[audio] AudioContext resumed — state:', ctx.state);
+    }
     return ctx;
   }, []);
 
@@ -101,6 +111,12 @@ export default function useStrudel() {
     setError(null);
     try {
       await ensureContext();
+      // Ensure previous scheduler is stopped before starting a new evaluate
+      const existingScheduler = engineRef.current?.scheduler;
+      if (existingScheduler?.started) {
+        console.log('[audio] Stopping existing scheduler before new evaluate');
+        existingScheduler.stop();
+      }
       ensureStream();
       ensureAnalyser();
       const { evaluate } = ensureEngine();

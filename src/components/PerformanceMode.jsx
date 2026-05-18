@@ -235,7 +235,7 @@ function drawTunnel(ctx, w, h, data, analyser, time) {
 
 // ── Canvas hook ────────────────────────────────────────────────────────────
 
-function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef }) {
+function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef, vizEnabledRef }) {
   const isPlayingRef = useRef(isPlaying);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   const particlesRef = useRef([]);
@@ -273,7 +273,7 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizI
       const analyser = getAnalyser();
       const vizIdx = vizIndexRef.current;
 
-      if (!analyser || !isPlayingRef.current) {
+      if (!analyser || !isPlayingRef.current || !vizEnabledRef.current) {
         if (vizIdx === 3) particlesRef.current = [];
         drawIdle(ctx, w, h);
         raf = requestAnimationFrame(draw);
@@ -342,6 +342,7 @@ export default function PerformanceMode({
   onStartRecording,
   onStopRecording,
   onExit,
+  vizEnabled = true,
 }) {
   const canvasRef = useRef(null);
   const edgeRef = useRef(null);
@@ -352,6 +353,8 @@ export default function PerformanceMode({
     Math.min(4, Math.max(0, parseInt(localStorage.getItem(VIZ_STORAGE_KEY) || '0', 10)))
   );
   const vizIndexRef = useRef(vizIndex);
+  const vizEnabledRef = useRef(vizEnabled);
+  useEffect(() => { vizEnabledRef.current = vizEnabled; }, [vizEnabled]);
   const [vizLabel, setVizLabel] = useState('');
   const vizLabelTimerRef = useRef(null);
 
@@ -404,7 +407,7 @@ export default function PerformanceMode({
     return () => window.removeEventListener('keydown', onKey);
   }, [isPlaying, isRecording, onPlay, onStop, onStartRecording, onStopRecording, onExit]);
 
-  usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef });
+  usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef, vizEnabledRef });
 
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
