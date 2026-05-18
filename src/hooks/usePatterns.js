@@ -61,5 +61,25 @@ export default function usePatterns() {
     });
   }, []);
 
-  return { patterns, savePattern, deletePattern, renamePattern };
+  const importPatterns = useCallback((incoming) => {
+    setPatterns((prev) => {
+      const taken = new Set(prev.map((p) => p.name));
+      const toAdd = incoming.map(({ name, code }) => {
+        let finalName = name;
+        if (taken.has(finalName)) {
+          finalName = `${name} (imported)`;
+          let n = 2;
+          while (taken.has(finalName)) finalName = `${name} (imported ${n++})`;
+        }
+        taken.add(finalName);
+        return { id: crypto.randomUUID(), name: finalName, code };
+      });
+      const updated = [...prev, ...toAdd];
+      saveToStorage(updated);
+      return updated;
+    });
+    return incoming.length;
+  }, []);
+
+  return { patterns, savePattern, deletePattern, renamePattern, importPatterns };
 }

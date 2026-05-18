@@ -1,4 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+
+function triggerDownload(content, filename) {
+  const blob = new Blob([content], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function Sidebar({
   patterns,
@@ -9,13 +19,54 @@ export default function Sidebar({
   onRename,
   onNew,
   onNameChange,
+  onImport,
 }) {
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
+  const [importMsg, setImportMsg] = useState(null);
+  const fileInputRef = useRef(null);
 
   function handleSave() {
     if (!currentName.trim()) return;
     onSave(currentName.trim());
+  }
+
+  function showMsg(msg) {
+    setImportMsg(msg);
+    setTimeout(() => setImportMsg(null), 3000);
+  }
+
+  function handleExportAll() {
+    const data = JSON.stringify(patterns.map(({ name, code }) => ({ name, code })), null, 2);
+    const date = new Date().toISOString().slice(0, 10);
+    triggerDownload(data, `strudel-patterns-${date}.json`);
+  }
+
+  function handleExportOne(p) {
+    const data = JSON.stringify([{ name: p.name, code: p.code }], null, 2);
+    triggerDownload(data, `${p.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`);
+  }
+
+  function handleImportFile(e) {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (!Array.isArray(parsed)) throw new Error('not an array');
+        const valid = parsed.filter(
+          (p) => typeof p?.name === 'string' && typeof p?.code === 'string',
+        );
+        if (valid.length === 0) throw new Error('no valid patterns found');
+        const count = onImport(valid);
+        showMsg(`${count} pattern${count !== 1 ? 's' : ''} imported`);
+      } catch (err) {
+        showMsg(`Import failed: ${err.message}`);
+      }
+    };
+    reader.readAsText(file);
   }
 
   function startRename(p) {
@@ -96,12 +147,46 @@ export default function Sidebar({
               editingName={editingName}
               onEditingNameChange={setEditingName}
               onLoad={() => onLoad(p)}
+              onExport={() => handleExportOne(p)}
               onDelete={() => onDelete(p.id)}
               onStartRename={() => startRename(p)}
               onCommitRename={() => commitRename(p)}
             />
           ))
         )}
+      </div>
+
+      {/* Import/export toolbar */}
+      {importMsg && (
+        <div className={`px-3 py-1.5 text-xs text-center font-mono border-t border-gray-800/70 ${
+          importMsg.startsWith('Import failed') ? 'text-red-400' : 'text-emerald-400'
+        }`}>
+          {importMsg}
+        </div>
+      )}
+      <div className="border-t border-gray-800/70 px-3 py-2 flex gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={handleImportFile}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          title="Import patterns from .json file"
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded bg-gray-800/60 hover:bg-gray-700/80 text-gray-500 hover:text-gray-300 border border-gray-700/50 transition-colors"
+        >
+          <ImportIcon /> Import
+        </button>
+        <button
+          onClick={handleExportAll}
+          disabled={patterns.length === 0}
+          title="Export all patterns to .json file"
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded bg-gray-800/60 hover:bg-gray-700/80 text-gray-500 hover:text-gray-300 border border-gray-700/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ExportIcon /> Export All
+        </button>
       </div>
     </aside>
   );
@@ -113,6 +198,7 @@ function PatternItem({
   editingName,
   onEditingNameChange,
   onLoad,
+  onExport,
   onDelete,
   onStartRename,
   onCommitRename,
@@ -150,6 +236,14 @@ function PatternItem({
       </button>
 
       <button
+        onClick={onExport}
+        title="Export this pattern"
+        className="text-gray-600 hover:text-emerald-400 transition-colors flex-shrink-0 p-0.5"
+      >
+        <ExportIcon />
+      </button>
+
+      <button
         onClick={onDelete}
         title="Delete"
         className="text-gray-600 hover:text-red-400 transition-colors text-sm leading-none px-0.5 flex-shrink-0"
@@ -176,6 +270,22 @@ function MusicNoteIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="text-gray-700">
       <path d="M9 3v10.55A4 4 0 1 0 11 17V7h4V3H9z" />
+    </svg>
+  );
+}
+
+function ExportIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
+      <path d="M6 1v6M3.5 4.5 6 7l2.5-2.5M2 9h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
+function ImportIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
+      <path d="M6 7V1M3.5 4.5 6 2l2.5 2.5M2 9h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
     </svg>
   );
 }

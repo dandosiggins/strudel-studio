@@ -29,7 +29,7 @@ export default function App() {
   }, [bpm, setCps]);
   const { isRecording, isConverting, startRecording, stopRecording, recordingTime } =
     useRecorder(getStream);
-  const { patterns, savePattern, deletePattern, renamePattern } = usePatterns();
+  const { patterns, savePattern, deletePattern, renamePattern, importPatterns } = usePatterns();
 
   function handleLoad(pattern) {
     setCode(pattern.code);
@@ -92,6 +92,7 @@ export default function App() {
         onDelete={deletePattern}
         onRename={renamePattern}
         onNew={handleNew}
+        onImport={importPatterns}
       />
 
       <main
