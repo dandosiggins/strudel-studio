@@ -23,6 +23,8 @@ export default function Controls({
   onToggleTutorial,
   showChallenges,
   onToggleChallenges,
+  showAI,
+  onToggleAI,
 }) {
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
@@ -152,6 +154,18 @@ export default function Controls({
         </button>
 
         <button
+          onClick={onToggleAI}
+          title={showAI ? 'Hide AI assistant' : 'Open AI assistant'}
+          className={`flex items-center justify-center w-7 h-7 rounded text-sm transition-colors ${
+            showAI
+              ? 'bg-purple-700 text-white'
+              : 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700'
+          }`}
+        >
+          <SparkleIcon />
+        </button>
+
+        <button
           onClick={onToggleCheatSheet}
           title={showCheatSheet ? 'Hide cheat sheet' : 'Show cheat sheet'}
           className={`flex items-center justify-center w-7 h-7 rounded text-sm font-semibold transition-colors ${
@@ -217,6 +231,14 @@ function TrophyIcon() {
         fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       <rect x="5" y="9.5" width="3" height="1.5" rx="0.5" />
       <rect x="3" y="11" width="7" height="2" rx="0.75" />
+    </svg>
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M8 0 L9.5 6.5 L16 8 L9.5 9.5 L8 16 L6.5 9.5 L0 8 L6.5 6.5 Z" />
     </svg>
   );
 }
