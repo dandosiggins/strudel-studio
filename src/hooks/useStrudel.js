@@ -20,6 +20,7 @@ export default function useStrudel() {
   const [samplesLoaded, setSamplesLoaded] = useState(false);
   const engineRef = useRef(null);
   const streamRef = useRef(null);
+  const analyserRef = useRef(null);
 
   useEffect(() => {
     // Pass the proxy base URL as the second argument so superdough builds
@@ -66,12 +67,25 @@ export default function useStrudel() {
     return streamRef.current;
   }, []);
 
+  const ensureAnalyser = useCallback(() => {
+    if (analyserRef.current) return analyserRef.current;
+    const ctx = getAudioContext();
+    const controller = getSuperdoughAudioController();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.8;
+    controller.output.destinationGain.connect(analyser);
+    analyserRef.current = analyser;
+    return analyser;
+  }, []);
+
   const initAudio = useCallback(async () => {
     await scopeReady;
     const ctx = getAudioContext();
     await ctx.resume();
     ensureStream();
-  }, [ensureStream]);
+    ensureAnalyser();
+  }, [ensureStream, ensureAnalyser]);
 
   const play = useCallback(async (code) => {
     setError(null);
@@ -80,6 +94,7 @@ export default function useStrudel() {
       const ctx = getAudioContext();
       await ctx.resume();
       ensureStream();
+      ensureAnalyser();
       const { evaluate } = ensureEngine();
       await evaluate(code);
       setIsPlaying(true);
@@ -99,6 +114,7 @@ export default function useStrudel() {
   }, []);
 
   const getStream = useCallback(() => streamRef.current, []);
+  const getAnalyser = useCallback(() => analyserRef.current, []);
 
-  return { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, setCps };
+  return { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, getAnalyser, setCps };
 }

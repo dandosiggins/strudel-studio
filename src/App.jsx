@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar.jsx';
 import Editor from './components/Editor.jsx';
 import Controls from './components/Controls.jsx';
 import CheatSheet from './components/CheatSheet.jsx';
+import Visualizer from './components/Visualizer.jsx';
 import useStrudel from './hooks/useStrudel.js';
 import useRecorder from './hooks/useRecorder.js';
 import usePatterns from './hooks/usePatterns.js';
@@ -19,7 +20,7 @@ export default function App() {
   const [showCheatSheet, setShowCheatSheet] = useState(false);
   const editorViewRef = useRef(null);
 
-  const { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, setCps } = useStrudel();
+  const { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, getAnalyser, setCps } = useStrudel();
   const [bpm, setBpm] = useState(() => Number(localStorage.getItem('strudel-bpm')) || 120);
 
   useEffect(() => {
@@ -127,6 +128,8 @@ export default function App() {
           recordingTime={recordingTime}
           error={error}
         />
+
+        <Visualizer isPlaying={isPlaying} getAnalyser={getAnalyser} />
 
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           <Editor
