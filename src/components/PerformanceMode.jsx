@@ -7,6 +7,7 @@ function formatTime(s) {
 }
 
 const VIZ_NAMES = ['Spectrum', 'Waveform', 'Circular', 'Particles', 'Tunnel'];
+const FRAME_MS = 1000 / 30; // 30 fps cap
 const VIZ_STORAGE_KEY = 'strudel-viz';
 
 // ── Draw functions ─────────────────────────────────────────────────────────
@@ -239,6 +240,9 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizI
   const isPlayingRef = useRef(isPlaying);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   const particlesRef = useRef([]);
+  const freqBufRef = useRef(null);
+  const waveBufRef = useRef(null);
+  const lastDrawRef = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -262,8 +266,13 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizI
     let rotation = 0;
     let time = 0;
 
-    function draw() {
+    function draw(timestamp) {
       if (document.hidden) { raf = requestAnimationFrame(draw); return; }
+      raf = requestAnimationFrame(draw);
+
+      if (timestamp - lastDrawRef.current < FRAME_MS) return;
+      lastDrawRef.current = timestamp;
+
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.width / dpr;
       const h = canvas.height / dpr;
@@ -276,15 +285,18 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizI
       if (!analyser || !isPlayingRef.current || !vizEnabledRef.current) {
         if (vizIdx === 3) particlesRef.current = [];
         drawIdle(ctx, w, h);
-        raf = requestAnimationFrame(draw);
         return;
       }
 
       time++;
-      rotation += 0.003;
+      rotation += 0.005; // slightly faster per draw since we draw less often
 
-      const freqData = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(freqData);
+      const binCount = analyser.frequencyBinCount;
+      if (!freqBufRef.current || freqBufRef.current.length !== binCount) {
+        freqBufRef.current = new Uint8Array(binCount);
+      }
+      analyser.getByteFrequencyData(freqBufRef.current);
+      const freqData = freqBufRef.current;
 
       // Edge glow (shared across all visualizers)
       let bassSum = 0;
@@ -299,9 +311,12 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizI
       }
 
       if (vizIdx === 1) {
-        const waveData = new Uint8Array(analyser.fftSize);
-        analyser.getByteTimeDomainData(waveData);
-        drawWaveform(ctx, w, h, waveData);
+        const fftSize = analyser.fftSize;
+        if (!waveBufRef.current || waveBufRef.current.length !== fftSize) {
+          waveBufRef.current = new Uint8Array(fftSize);
+        }
+        analyser.getByteTimeDomainData(waveBufRef.current);
+        drawWaveform(ctx, w, h, waveBufRef.current);
       } else if (vizIdx === 2) {
         drawCircular(ctx, w, h, freqData, analyser, rotation);
       } else if (vizIdx === 3) {
@@ -311,8 +326,6 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizI
       } else {
         drawSpectrum(ctx, w, h, freqData, analyser);
       }
-
-      raf = requestAnimationFrame(draw);
     }
 
     raf = requestAnimationFrame(draw);

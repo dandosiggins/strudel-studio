@@ -3,11 +3,15 @@ import { useRef, useEffect, useCallback } from 'react';
 const H = 80;
 const BAR_COUNT = 80;
 
+const FRAME_MS = 1000 / 30; // 30 fps cap
+
 export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }) {
   const canvasRef = useRef(null);
   const ctx2dRef = useRef(null);
   const wRef = useRef(0);
   const rafRef = useRef(null);
+  const lastDrawRef = useRef(0);
+  const freqBufRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -43,9 +47,12 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
   }, []);
 
   useEffect(() => {
-    const animate = () => {
+    const animate = (timestamp) => {
       rafRef.current = requestAnimationFrame(animate);
       if (document.hidden) return;
+      if (timestamp - lastDrawRef.current < FRAME_MS) return;
+      lastDrawRef.current = timestamp;
+
       const ctx2d = ctx2dRef.current;
       if (!ctx2d) return;
 
@@ -58,8 +65,11 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
       }
 
       const bufLen = analyser.frequencyBinCount;
-      const data = new Uint8Array(bufLen);
-      analyser.getByteFrequencyData(data);
+      if (!freqBufRef.current || freqBufRef.current.length !== bufLen) {
+        freqBufRef.current = new Uint8Array(bufLen);
+      }
+      analyser.getByteFrequencyData(freqBufRef.current);
+      const data = freqBufRef.current;
 
       ctx2d.clearRect(0, 0, w, H);
 
