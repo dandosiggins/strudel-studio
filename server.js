@@ -47,9 +47,9 @@ app.post('/api/ai-pattern', async (req, res) => {
     return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured on the server' });
   }
 
-  const { prompt } = req.body;
-  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-    return res.status(400).json({ error: 'prompt is required' });
+  const { messages } = req.body;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: 'messages array is required' });
   }
 
   try {
@@ -64,7 +64,7 @@ app.post('/api/ai-pattern', async (req, res) => {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         system: AI_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: prompt.trim() }],
+        messages,
       }),
     });
 

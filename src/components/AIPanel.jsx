@@ -1,29 +1,32 @@
-import { useState, useRef } from 'react';
-
-const HISTORY_KEY = 'strudel-ai-history';
+import { useState, useEffect, useRef } from 'react';
 
 export default function AIPanel({ onLoadCode }) {
-  const [prompt, setPrompt] = useState('');
-  const [generated, setGenerated] = useState(null);
+  const [messages, setMessages] = useState([]); // { role: 'user' | 'assistant', content: string }
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [history, setHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
-    catch { return []; }
-  });
-  const lastPromptRef = useRef('');
+  const chatEndRef = useRef(null);
 
-  async function generate(promptText) {
-    if (!promptText.trim()) return;
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  async function send() {
+    const text = input.trim();
+    if (!text || loading) return;
+
+    const userMsg = { role: 'user', content: text };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput('');
     setLoading(true);
     setError(null);
-    lastPromptRef.current = promptText;
 
     try {
       const res = await fetch('/api/ai-pattern', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptText }),
+        body: JSON.stringify({ messages: newMessages }),
       });
 
       if (!res.ok) {
@@ -36,13 +39,8 @@ export default function AIPanel({ onLoadCode }) {
         .replace(/^```[\w]*\n?/m, '')
         .replace(/\n?```$/m, '')
         .trim();
-      setGenerated(code);
 
-      setHistory((prev) => {
-        const next = [{ prompt: promptText, code }, ...prev].slice(0, 5);
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-        return next;
-      });
+      setMessages((prev) => [...prev, { role: 'assistant', content: code }]);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -50,15 +48,18 @@ export default function AIPanel({ onLoadCode }) {
     }
   }
 
-  function handleGenerate() {
-    generate(prompt);
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      send();
+    }
   }
 
-  function handleRegenerate() {
-    generate(lastPromptRef.current);
+  function newConversation() {
+    setMessages([]);
+    setInput('');
+    setError(null);
   }
-
-  const canGenerate = !loading && prompt.trim();
 
   return (
     <div className="h-full flex flex-col bg-gray-900 border-l border-gray-800" style={{ width: 300 }}>
@@ -67,106 +68,139 @@ export default function AIPanel({ onLoadCode }) {
       <div className="px-4 py-2.5 border-b border-gray-800 flex items-center gap-2 flex-shrink-0">
         <SparkleIcon className="text-purple-400 flex-shrink-0" />
         <span className="text-sm font-semibold text-gray-200">AI Assistant</span>
+        {messages.length > 0 && (
+          <button
+            onClick={newConversation}
+            title="Start a new conversation"
+            className="ml-auto text-xs text-gray-600 hover:text-gray-400 transition-colors"
+          >
+            New ↺
+          </button>
+        )}
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0">
+      {/* Chat log */}
+      <div className="flex-1 overflow-y-auto min-h-0 px-3 py-3 flex flex-col gap-3">
+        {messages.length === 0 ? (
+          <EmptyState />
+        ) : (
+          messages.map((msg, i) =>
+            msg.role === 'user'
+              ? <UserMessage key={i} content={msg.content} />
+              : <AIMessage key={i} content={msg.content} onLoad={onLoadCode} />
+          )
+        )}
 
-          {/* Prompt */}
-        <div className="px-4 pt-3 pb-0">
-          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
-            Describe your pattern
-          </label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleGenerate(); }}
-            placeholder={"a slow jazzy piano melody with light drums\nheavy techno beat with a dark bassline\nambient pad with reverb that slowly evolves"}
-            rows={4}
-            className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2.5 py-1.5 resize-none focus:outline-none focus:border-gray-500 placeholder-gray-700 leading-relaxed"
-          />
-          <p className="text-xs text-gray-700 mt-1">Ctrl+Enter to generate</p>
-        </div>
+        {loading && <LoadingMessage />}
 
-        {/* Generate button */}
-        <div className="px-4 pt-3 pb-0">
+        {error && (
+          <div className="px-3 py-2 rounded-lg bg-red-950/50 border border-red-900/50">
+            <p className="text-xs text-red-400 font-mono break-words">{error}</p>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-gray-800 px-3 py-3 flex-shrink-0">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={messages.length === 0 ? 'Describe a pattern…' : 'Refine or ask a follow-up…'}
+          rows={3}
+          className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2.5 py-1.5 resize-none focus:outline-none focus:border-gray-600 placeholder-gray-700 leading-relaxed"
+        />
+        <div className="flex items-center justify-between mt-1.5">
+          <span className="text-xs text-gray-700">Ctrl+Enter to send</span>
           <button
-            onClick={handleGenerate}
-            disabled={!canGenerate}
-            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
-              canGenerate
+            onClick={send}
+            disabled={!input.trim() || loading}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
+              input.trim() && !loading
                 ? 'bg-purple-700 hover:bg-purple-600 active:bg-purple-800 text-white'
                 : 'bg-gray-800 text-gray-600 cursor-not-allowed'
             }`}
           >
             {loading ? <SpinnerIcon /> : <SparkleIcon />}
-            {loading ? 'Generating…' : 'Generate'}
+            {loading ? 'Generating…' : 'Send'}
           </button>
         </div>
-
-        {/* Error */}
-        {error && (
-          <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-red-950/50 border border-red-900/50">
-            <p className="text-xs text-red-400 font-mono break-words">{error}</p>
-          </div>
-        )}
-
-        {/* Generated output */}
-        {generated && !loading && (
-          <div className="px-4 pt-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Generated</span>
-              <button
-                onClick={handleRegenerate}
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                ↻ Regenerate
-              </button>
-            </div>
-            <pre className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-xs text-emerald-400 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
-              {generated}
-            </pre>
-            <button
-              onClick={() => onLoadCode(generated)}
-              className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white text-xs font-semibold transition-colors"
-            >
-              <LoadIcon />
-              Load into Editor
-            </button>
-          </div>
-        )}
-
-        {/* History */}
-        {history.length > 0 && (
-          <div className="px-4 pt-3 pb-4 mt-3 border-t border-gray-800">
-            <span className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
-              Recent
-            </span>
-            <div className="flex flex-col gap-2">
-              {history.map((item, i) => (
-                <div key={i} className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-gray-400 mb-1.5 leading-snug line-clamp-2">{item.prompt}</p>
-                  <button
-                    onClick={() => { setGenerated(item.code); onLoadCode(item.code); }}
-                    className="text-xs text-emerald-500 hover:text-emerald-400 transition-colors font-medium"
-                  >
-                    Load →
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Bottom padding */}
-        <div className="h-4" />
       </div>
     </div>
   );
 }
 
-function SparkleIcon({ className }) {
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function EmptyState() {
   return (
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className={className}>
+    <div className="flex flex-col items-center justify-center text-center px-2 py-6 gap-3 flex-1">
+      <SparkleIcon className="text-purple-900" size={20} />
+      <p className="text-xs text-gray-600 leading-relaxed">
+        Describe a pattern to get started, then refine it with follow-ups.
+      </p>
+      <div className="flex flex-col gap-1.5 w-full text-left mt-1">
+        {[
+          'a slow jazzy piano melody with light drums',
+          'heavy techno beat with a dark bassline',
+          'ambient pad with reverb that slowly evolves',
+        ].map((ex) => (
+          <p key={ex} className="text-xs text-gray-700 italic px-2 py-1.5 bg-gray-800/40 rounded">
+            "{ex}"
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UserMessage({ content }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">You</span>
+      <p className="text-xs text-gray-300 leading-relaxed bg-gray-800/50 rounded-lg px-3 py-2">
+        {content}
+      </p>
+    </div>
+  );
+}
+
+function AIMessage({ content, onLoad }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs font-semibold text-purple-700 uppercase tracking-wider">AI</span>
+      <pre className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-2.5 text-xs text-emerald-400 font-mono whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto">
+        {content}
+      </pre>
+      <button
+        onClick={() => onLoad(content)}
+        className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-900/40 hover:bg-emerald-800/50 border border-emerald-800/50 text-emerald-400 hover:text-emerald-300 text-xs font-medium transition-colors"
+      >
+        <LoadIcon /> Load into Editor
+      </button>
+    </div>
+  );
+}
+
+function LoadingMessage() {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-semibold text-purple-700 uppercase tracking-wider">AI</span>
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-950 border border-gray-800 rounded-lg">
+        <SpinnerIcon />
+        <span className="text-xs text-gray-600">Generating…</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+function SparkleIcon({ className, size = 12 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className={className}>
       <path d="M8 0 L9.5 6.5 L16 8 L9.5 9.5 L8 16 L6.5 9.5 L0 8 L6.5 6.5 Z" />
     </svg>
   );
@@ -174,7 +208,7 @@ function SparkleIcon({ className }) {
 
 function SpinnerIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2.5" strokeLinecap="round" className="animate-spin">
       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
     </svg>
