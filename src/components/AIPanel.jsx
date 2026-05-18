@@ -33,9 +33,9 @@ export default function AIPanel({ onLoadCode }) {
 
       const data = await res.json();
       const code = (data.code || '')
-        .replace(/```javascript/g, '')
-        .replace(/```js/g, '')
-        .replace(/```/g, '')
+        .replace(/^```[\w]*\n?/m, '')
+        .replace(/\n?```$/m, '')
+        .replace(/\b\.\b/g, '~')
         .trim();
       setGenerated(code);
 
