@@ -1,33 +1,8 @@
 import { useState, useRef } from 'react';
 
 const HISTORY_KEY = 'strudel-ai-history';
-const APIKEY_KEY = 'strudel-ai-key';
-
-const SYSTEM_PROMPT = `You are a Strudel live coding music expert.
-Generate Strudel pattern code based on the user's description.
-
-Available instruments: piano, bd (kick), sd (snare), hh (hi-hat),
-gtr, jvbass, bass1, moog, juno, sitar, supersaw
-
-Available effects: .room() .delay() .lpf() .gain() .pan() .slow() .fast()
-
-Rules:
-- Return ONLY valid Strudel code, no explanation
-- Always use stack() for multiple layers
-- Keep patterns musical and interesting
-- Match the mood and style described
-- Use appropriate BPM suggestions as comments
-
-Example output for "jazzy piano":
-// Try BPM: 90
-stack(
-  note("<c4 eb4 g4 bb4> <f4 ab4 c5>").sound("piano").slow(2).room(0.6),
-  sound("bd sd").gain(0.6),
-  sound("hh*8").gain(0.25)
-)`;
 
 export default function AIPanel({ onLoadCode }) {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem(APIKEY_KEY) || '');
   const [prompt, setPrompt] = useState('');
   const [generated, setGenerated] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -38,41 +13,26 @@ export default function AIPanel({ onLoadCode }) {
   });
   const lastPromptRef = useRef('');
 
-  function saveApiKey(key) {
-    setApiKey(key);
-    localStorage.setItem(APIKEY_KEY, key);
-  }
-
   async function generate(promptText) {
-    if (!promptText.trim() || !apiKey.trim()) return;
+    if (!promptText.trim()) return;
     setLoading(true);
     setError(null);
     lastPromptRef.current = promptText;
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/ai-pattern', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey.trim(),
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: promptText }],
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptText }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error?.message || `API error ${res.status}`);
+        throw new Error(data.error || `Server error ${res.status}`);
       }
 
       const data = await res.json();
-      const code = data.content?.[0]?.text?.trim() || '';
+      const code = data.code || '';
       setGenerated(code);
 
       setHistory((prev) => {
@@ -95,7 +55,7 @@ export default function AIPanel({ onLoadCode }) {
     generate(lastPromptRef.current);
   }
 
-  const canGenerate = !loading && prompt.trim() && apiKey.trim();
+  const canGenerate = !loading && prompt.trim();
 
   return (
     <div className="h-full flex flex-col bg-gray-900 border-l border-gray-800" style={{ width: 300 }}>
@@ -108,22 +68,7 @@ export default function AIPanel({ onLoadCode }) {
 
       <div className="flex-1 overflow-y-auto min-h-0">
 
-        {/* API Key */}
-        <div className="px-4 pt-3 pb-0">
-          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
-            Anthropic API Key
-          </label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => saveApiKey(e.target.value)}
-            placeholder="sk-ant-..."
-            className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2.5 py-1.5 font-mono focus:outline-none focus:border-gray-500 placeholder-gray-700"
-          />
-          <p className="text-xs text-gray-700 mt-1">Stored locally in your browser</p>
-        </div>
-
-        {/* Prompt */}
+          {/* Prompt */}
         <div className="px-4 pt-3 pb-0">
           <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
             Describe your pattern
