@@ -263,6 +263,7 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizI
     let time = 0;
 
     function draw() {
+      if (document.hidden) { raf = requestAnimationFrame(draw); return; }
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.width / dpr;
       const h = canvas.height / dpr;

@@ -45,6 +45,7 @@ export default function Visualizer({ isPlaying, getAnalyser }) {
   useEffect(() => {
     const animate = () => {
       rafRef.current = requestAnimationFrame(animate);
+      if (document.hidden) return;
       const ctx2d = ctx2dRef.current;
       if (!ctx2d) return;
 

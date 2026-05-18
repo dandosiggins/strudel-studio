@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { webaudioRepl } from '@strudel/webaudio';
 import { evalScope } from '@strudel/core';
 import { transpiler } from '@strudel/transpiler';
-import { getAudioContext, getSuperdoughAudioController, registerSynthSounds, registerZZFXSounds, samples, soundMap } from 'superdough';
+import { getAudioContext, setAudioContext, getSuperdoughAudioController, registerSynthSounds, registerZZFXSounds, samples, soundMap } from 'superdough';
 
 registerSynthSounds();
 registerZZFXSounds();
@@ -79,20 +79,28 @@ export default function useStrudel() {
     return analyser;
   }, []);
 
-  const initAudio = useCallback(async () => {
+  // Create AudioContext with playback latency hint on first call; reuse on subsequent calls.
+  const ensureContext = useCallback(async () => {
     await scopeReady;
+    const existing = getAudioContext();
+    if (!existing || existing.state === 'closed') {
+      setAudioContext(new AudioContext({ latencyHint: 'playback' }));
+    }
     const ctx = getAudioContext();
-    await ctx.resume();
+    if (ctx.state === 'suspended') await ctx.resume();
+    return ctx;
+  }, []);
+
+  const initAudio = useCallback(async () => {
+    await ensureContext();
     ensureStream();
     ensureAnalyser();
-  }, [ensureStream, ensureAnalyser]);
+  }, [ensureContext, ensureStream, ensureAnalyser]);
 
   const play = useCallback(async (code) => {
     setError(null);
     try {
-      await scopeReady;
-      const ctx = getAudioContext();
-      await ctx.resume();
+      await ensureContext();
       ensureStream();
       ensureAnalyser();
       const { evaluate } = ensureEngine();
@@ -102,7 +110,7 @@ export default function useStrudel() {
       setError(err.message ?? String(err));
       setIsPlaying(false);
     }
-  }, [ensureEngine, ensureStream]);
+  }, [ensureContext, ensureEngine, ensureStream, ensureAnalyser]);
 
   const stop = useCallback(() => {
     engineRef.current?.scheduler?.stop();
