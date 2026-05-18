@@ -6,13 +6,240 @@ function formatTime(s) {
   return `${m}:${(s % 60).toString().padStart(2, '0')}`;
 }
 
-// ── Performance visualizer ─────────────────────────────────────────────────
+const VIZ_NAMES = ['Spectrum', 'Waveform', 'Circular', 'Particles', 'Tunnel'];
+const VIZ_STORAGE_KEY = 'strudel-viz';
 
-function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying }) {
+// ── Draw functions ─────────────────────────────────────────────────────────
+
+function drawIdle(ctx, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(52,211,153,0.05)';
+  ctx.fillRect(0, h / 2 - 1, w, 2);
+}
+
+function drawSpectrum(ctx, w, h, data, analyser) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+  const barW = Math.max(2, Math.floor(w / 160));
+  const gap = 1, step = barW + gap;
+  const numBars = Math.floor(cx / step);
+  const usedBins = Math.floor(analyser.frequencyBinCount * 0.7);
+
+  for (let i = 0; i < numBars; i++) {
+    const bin = Math.floor((i / numBars) * usedBins);
+    const v = data[bin] / 255;
+    const halfH = Math.max(1, v * cy * 0.88);
+    const alpha = (0.08 + v * 0.92).toFixed(2);
+    const green = Math.round(150 + v * 61);
+
+    ctx.shadowColor = `rgba(52,211,153,${(v * 0.85).toFixed(2)})`;
+    ctx.shadowBlur = v > 0.15 ? 8 + v * 18 : 0;
+    ctx.fillStyle = `rgba(52,${green},99,${alpha})`;
+
+    const rx = cx + i * step;
+    const lx = cx - (i + 1) * step;
+    ctx.fillRect(rx, cy - halfH, barW, halfH * 2);
+    ctx.fillRect(lx, cy - halfH, barW, halfH * 2);
+
+    if (v > 0.2) {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = `rgba(167,243,208,${Math.min(1, v * 1.3).toFixed(2)})`;
+      ctx.fillRect(rx, cy - halfH, barW, 2);
+      ctx.fillRect(rx, cy + halfH - 2, barW, 2);
+      ctx.fillRect(lx, cy - halfH, barW, 2);
+      ctx.fillRect(lx, cy + halfH - 2, barW, 2);
+    }
+  }
+  ctx.shadowBlur = 0;
+}
+
+function drawWaveform(ctx, w, h, waveData) {
+  ctx.clearRect(0, 0, w, h);
+  const cy = h / 2;
+  const sliceWidth = w / (waveData.length - 1);
+
+  let sum = 0;
+  for (let i = 0; i < waveData.length; i++) sum += Math.abs(waveData[i] - 128);
+  const avgAmp = sum / waveData.length / 128;
+
+  ctx.lineWidth = 1.5 + avgAmp * 3;
+  ctx.strokeStyle = `rgba(52,211,153,${(0.55 + avgAmp * 0.45).toFixed(2)})`;
+  ctx.shadowColor = 'rgba(52,211,153,0.7)';
+  ctx.shadowBlur = 6 + avgAmp * 22;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+
+  for (let i = 0; i < waveData.length; i++) {
+    const v = (waveData[i] - 128) / 128;
+    const y = cy + v * cy * 0.8;
+    const x = i * sliceWidth;
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      const prevX = (i - 1) * sliceWidth;
+      const prevV = (waveData[i - 1] - 128) / 128;
+      const prevY = cy + prevV * cy * 0.8;
+      const cpX = (prevX + x) / 2;
+      ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y);
+    }
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawCircular(ctx, w, h, data, analyser, rotation) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+  const baseRadius = Math.min(w, h) * 0.22;
+  const maxBarLen = Math.min(w, h) * 0.28;
+  const usedBins = Math.floor(analyser.frequencyBinCount * 0.7);
+  const numBars = 180;
+
+  let bassSum = 0;
+  for (let i = 0; i < 8; i++) bassSum += data[i];
+  const bass = bassSum / (8 * 255);
+
+  const pulseR = baseRadius * (0.85 + bass * 0.35);
+  ctx.beginPath();
+  ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(52,211,153,${(0.15 + bass * 0.45).toFixed(2)})`;
+  ctx.lineWidth = 1.5 + bass * 3;
+  ctx.shadowColor = 'rgba(52,211,153,0.6)';
+  ctx.shadowBlur = bass > 0.2 ? 15 + bass * 25 : 5;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  for (let i = 0; i < numBars; i++) {
+    const bin = Math.floor((i / numBars) * usedBins);
+    const v = data[bin] / 255;
+    const angle = (i / numBars) * Math.PI * 2 + rotation;
+    const barLen = Math.max(1, v * maxBarLen);
+    const x1 = cx + Math.cos(angle) * baseRadius;
+    const y1 = cy + Math.sin(angle) * baseRadius;
+    const x2 = cx + Math.cos(angle) * (baseRadius + barLen);
+    const y2 = cy + Math.sin(angle) * (baseRadius + barLen);
+    const green = Math.round(150 + v * 61);
+    const alpha = 0.15 + v * 0.85;
+
+    ctx.strokeStyle = `rgba(52,${green},99,${alpha.toFixed(2)})`;
+    ctx.lineWidth = Math.max(1, 1.5 + v * 2);
+    ctx.shadowColor = v > 0.6 ? `rgba(167,243,208,${(v * 0.8).toFixed(2)})` : 'transparent';
+    ctx.shadowBlur = v > 0.6 ? v * 15 : 0;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+}
+
+function drawParticles(ctx, w, h, data, particlesRef) {
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(0, 0, w, h);
+
+  let overallAmp = 0;
+  for (let i = 0; i < data.length; i++) overallAmp += data[i];
+  overallAmp /= data.length * 255;
+
+  let bassSum = 0;
+  for (let i = 0; i < 8; i++) bassSum += data[i];
+  const bass = bassSum / (8 * 255);
+
+  const spawnCount = Math.floor(1 + overallAmp * 12);
+  for (let i = 0; i < spawnCount; i++) {
+    particlesRef.current.push({
+      x: Math.random() * w,
+      y: h + Math.random() * 20,
+      vx: (Math.random() - 0.5) * 1.5 * (1 + bass * 3),
+      vy: -(1 + Math.random() * 3 + overallAmp * 8),
+      size: 1.5 + Math.random() * 3 + overallAmp * 6,
+      life: 1.0,
+      decay: 0.008 + Math.random() * 0.012 + overallAmp * 0.01,
+      brightness: overallAmp,
+    });
+  }
+
+  particlesRef.current = particlesRef.current.filter(p => p.life > 0);
+  for (const p of particlesRef.current) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= p.decay;
+    p.vx *= 0.99;
+
+    const alpha = Math.max(0, p.life * 0.85);
+    const whiteness = Math.round(p.brightness * 160);
+    const green = Math.min(255, 150 + whiteness);
+    const rb = Math.min(255, 20 + whiteness * 2);
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, Math.max(0.5, p.size * p.life), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${rb},${green},${rb},${alpha.toFixed(2)})`;
+    if (p.brightness > 0.5) {
+      ctx.shadowColor = 'rgba(167,243,208,0.6)';
+      ctx.shadowBlur = p.size * 3;
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawTunnel(ctx, w, h, data, analyser, time) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+  const maxR = Math.sqrt(cx * cx + cy * cy) * 1.1;
+
+  let bassSum = 0;
+  for (let i = 0; i < 8; i++) bassSum += data[i];
+  const bass = bassSum / (8 * 255);
+
+  let highSum = 0;
+  const hStart = Math.floor(analyser.frequencyBinCount * 0.5);
+  for (let i = hStart; i < analyser.frequencyBinCount; i++) highSum += data[i];
+  const high = highSum / ((analyser.frequencyBinCount - hStart) * 255);
+
+  const numRings = 18;
+  for (let i = numRings; i >= 0; i--) {
+    const norm = ((i / numRings) + (time * 0.0004)) % 1;
+    const r = norm * maxR + bass * 40 * (1 - norm);
+    const wobbleAmp = high * 25 * (1 - norm * 0.6);
+    const alpha = (1 - norm) * 0.5 + 0.05;
+    const green = Math.round(130 + bass * 80 * (1 - norm));
+    const lineW = Math.max(0.5, 1 + (1 - norm) * 2 + bass * 3 * (1 - norm));
+
+    ctx.lineWidth = lineW;
+    ctx.strokeStyle = `rgba(52,${green},99,${alpha.toFixed(2)})`;
+    ctx.shadowColor = bass > 0.3 ? `rgba(52,211,153,${Math.min(1, alpha * 1.5).toFixed(2)})` : 'transparent';
+    ctx.shadowBlur = bass > 0.3 ? 10 + bass * 20 : 0;
+
+    if (wobbleAmp > 2) {
+      const segments = 64;
+      ctx.beginPath();
+      for (let s = 0; s <= segments; s++) {
+        const angle = (s / segments) * Math.PI * 2;
+        const wobble = Math.sin(angle * 6 + time * 0.003) * wobbleAmp;
+        const rx = cx + Math.cos(angle) * (r + wobble);
+        const ry = cy + Math.sin(angle) * (r + wobble);
+        s === 0 ? ctx.moveTo(rx, ry) : ctx.lineTo(rx, ry);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(1, r), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.shadowBlur = 0;
+}
+
+// ── Canvas hook ────────────────────────────────────────────────────────────
+
+function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef }) {
   const isPlayingRef = useRef(isPlaying);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  const particlesRef = useRef([]);
 
-  // Resize handler
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -28,11 +255,12 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying }) {
     return () => ro.disconnect();
   }, [canvasRef]);
 
-  // Animation loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let raf;
+    let rotation = 0;
+    let time = 0;
 
     function draw() {
       const dpr = window.devicePixelRatio || 1;
@@ -40,24 +268,26 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying }) {
       const h = canvas.height / dpr;
       const ctx = canvas.getContext('2d');
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
 
       const analyser = getAnalyser();
+      const vizIdx = vizIndexRef.current;
 
       if (!analyser || !isPlayingRef.current) {
-        // Dim centerline pulse when idle
-        ctx.fillStyle = 'rgba(52,211,153,0.05)';
-        ctx.fillRect(0, h / 2 - 1, w, 2);
+        if (vizIdx === 3) particlesRef.current = [];
+        drawIdle(ctx, w, h);
         raf = requestAnimationFrame(draw);
         return;
       }
 
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(data);
+      time++;
+      rotation += 0.003;
 
-      // Bass bins 0-7 → screen edge glow
+      const freqData = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(freqData);
+
+      // Edge glow (shared across all visualizers)
       let bassSum = 0;
-      for (let i = 0; i < 8; i++) bassSum += data[i];
+      for (let i = 0; i < 8; i++) bassSum += freqData[i];
       const bass = bassSum / (8 * 255);
       if (edgeRef.current) {
         const r = Math.round(bass * 160);
@@ -67,44 +297,20 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying }) {
           `inset 0 0 ${r}px rgba(52,211,153,${a1}), inset 0 0 ${r * 2}px rgba(16,185,129,${a2})`;
       }
 
-      const cx = w / 2;
-      const cy = h / 2;
-      const barW = Math.max(2, Math.floor(w / 160));
-      const gap = 1;
-      const step = barW + gap;
-      const numBars = Math.floor(cx / step);
-      const usedBins = Math.floor(analyser.frequencyBinCount * 0.7);
-
-      for (let i = 0; i < numBars; i++) {
-        const bin = Math.floor((i / numBars) * usedBins);
-        const v = data[bin] / 255;
-        const halfH = Math.max(1, v * cy * 0.88);
-        const alpha = (0.08 + v * 0.92).toFixed(2);
-        const green = Math.round(150 + v * 61);
-
-        ctx.shadowColor = `rgba(52,211,153,${(v * 0.85).toFixed(2)})`;
-        ctx.shadowBlur = v > 0.15 ? 8 + v * 18 : 0;
-        ctx.fillStyle = `rgba(52,${green},99,${alpha})`;
-
-        const rx = cx + i * step;
-        const lx = cx - (i + 1) * step;
-
-        // Bars grow from vertical center → both up and down, mirrored left/right
-        ctx.fillRect(rx, cy - halfH, barW, halfH * 2);
-        ctx.fillRect(lx, cy - halfH, barW, halfH * 2);
-
-        // Bright caps at bar tips
-        if (v > 0.2) {
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = `rgba(167,243,208,${Math.min(1, v * 1.3).toFixed(2)})`;
-          ctx.fillRect(rx, cy - halfH, barW, 2);
-          ctx.fillRect(rx, cy + halfH - 2, barW, 2);
-          ctx.fillRect(lx, cy - halfH, barW, 2);
-          ctx.fillRect(lx, cy + halfH - 2, barW, 2);
-        }
+      if (vizIdx === 1) {
+        const waveData = new Uint8Array(analyser.fftSize);
+        analyser.getByteTimeDomainData(waveData);
+        drawWaveform(ctx, w, h, waveData);
+      } else if (vizIdx === 2) {
+        drawCircular(ctx, w, h, freqData, analyser, rotation);
+      } else if (vizIdx === 3) {
+        drawParticles(ctx, w, h, freqData, particlesRef);
+      } else if (vizIdx === 4) {
+        drawTunnel(ctx, w, h, freqData, analyser, time);
+      } else {
+        drawSpectrum(ctx, w, h, freqData, analyser);
       }
 
-      ctx.shadowBlur = 0;
       raf = requestAnimationFrame(draw);
     }
 
@@ -113,7 +319,7 @@ function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying }) {
       cancelAnimationFrame(raf);
       if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
     };
-  }, [canvasRef, edgeRef, getAnalyser]);
+  }, [canvasRef, edgeRef, getAnalyser, vizIndexRef]);
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -139,23 +345,41 @@ export default function PerformanceMode({
   const canvasRef = useRef(null);
   const edgeRef = useRef(null);
   const [visible, setVisible] = useState(false);
-  // Blink state for recording dot
   const [recBlink, setRecBlink] = useState(true);
 
-  // Fade in on mount
+  const [vizIndex, setVizIndex] = useState(() =>
+    Math.min(4, Math.max(0, parseInt(localStorage.getItem(VIZ_STORAGE_KEY) || '0', 10)))
+  );
+  const vizIndexRef = useRef(vizIndex);
+  const [vizLabel, setVizLabel] = useState('');
+  const vizLabelTimerRef = useRef(null);
+
+  useEffect(() => { vizIndexRef.current = vizIndex; }, [vizIndex]);
+  useEffect(() => () => clearTimeout(vizLabelTimerRef.current), []);
+
+  function cycleViz() {
+    setVizIndex(prev => {
+      const next = (prev + 1) % VIZ_NAMES.length;
+      vizIndexRef.current = next;
+      localStorage.setItem(VIZ_STORAGE_KEY, String(next));
+      setVizLabel(VIZ_NAMES[next]);
+      clearTimeout(vizLabelTimerRef.current);
+      vizLabelTimerRef.current = setTimeout(() => setVizLabel(''), 1500);
+      return next;
+    });
+  }
+
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 16);
     return () => clearTimeout(t);
   }, []);
 
-  // Recording dot blink
   useEffect(() => {
     if (!isRecording) { setRecBlink(true); return; }
     const id = setInterval(() => setRecBlink(v => !v), 600);
     return () => clearInterval(id);
   }, [isRecording]);
 
-  // Keyboard shortcuts — re-register when deps change so closures stay fresh
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') { onExit(); return; }
@@ -168,13 +392,18 @@ export default function PerformanceMode({
       if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey) {
         if (e.target.closest?.('.cm-editor')) return;
         if (isRecording) onStopRecording(); else onStartRecording();
+        return;
+      }
+      if ((e.key === 'v' || e.key === 'V') && !e.ctrlKey && !e.metaKey) {
+        if (e.target.closest?.('.cm-editor')) return;
+        cycleViz();
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [isPlaying, isRecording, onPlay, onStop, onStartRecording, onStopRecording, onExit]);
 
-  usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying });
+  usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef });
 
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
@@ -253,7 +482,28 @@ export default function PerformanceMode({
         )}
       </div>
 
-      {/* Dramatic visualizer — 60% of height */}
+      {/* Visualizer name flash */}
+      {vizLabel && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 30,
+          pointerEvents: 'none',
+          fontSize: 22,
+          fontFamily: 'monospace',
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: 'rgba(52,211,153,0.85)',
+          textShadow: '0 0 20px rgba(52,211,153,0.5)',
+          transition: 'opacity 0.3s',
+        }}>
+          {vizLabel}
+        </div>
+      )}
+
+      {/* Visualizer canvas — 60% of height */}
       <canvas
         ref={canvasRef}
         style={{ flex: '0 0 60%', width: '100%', display: 'block', background: '#000' }}
@@ -337,11 +587,18 @@ export default function PerformanceMode({
 
         <div style={{ width: 1, height: 22, background: '#1f1f1f', flexShrink: 0 }} />
 
-        {/* Exit button */}
+        {/* Visualizer cycle button */}
+        <PerfBtn onClick={cycleViz} title={`Visualizer: ${VIZ_NAMES[vizIndex]} — cycle (V)`}>
+          <VizIcon />
+          {VIZ_NAMES[vizIndex]}
+        </PerfBtn>
+
+        <div style={{ width: 1, height: 22, background: '#1f1f1f', flexShrink: 0 }} />
+
         <ExitBtn onClick={onExit} title="Exit performance mode (Esc)" />
       </div>
 
-      {/* Editor — remaining 40% minus controls */}
+      {/* Editor — remaining space */}
       <div style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 20 }}>
         <Editor code={code} onChange={onCodeChange} isPlaying={isPlaying} />
       </div>
@@ -415,7 +672,6 @@ function ExitBtn({ onClick, title }) {
         flexShrink: 0,
       }}
     >
-      {/* Compress/exit icon */}
       <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor"
         strokeWidth="1.5" strokeLinecap="round">
         <polyline points="4,1 4,4 1,4" />
@@ -425,5 +681,14 @@ function ExitBtn({ onClick, title }) {
       </svg>
       Exit
     </button>
+  );
+}
+
+function VizIcon() {
+  return (
+    <svg width="11" height="9" viewBox="0 0 14 10" fill="none" stroke="currentColor"
+      strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="1,5 3,2 5,7 7,3 9,6 11,4 13,5" />
+    </svg>
   );
 }
