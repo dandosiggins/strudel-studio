@@ -7,8 +7,9 @@ import useRecorder from './hooks/useRecorder.js';
 import usePatterns from './hooks/usePatterns.js';
 
 const DEFAULT_CODE = `stack(
-  note("c4 eb4 g4 bb4").sound("triangle").slow(2),
-  note("c3 g2 c3 g2").sound("sawtooth").lpf(500).gain(0.4)
+  note("c4 eb4 g4 bb4").sound("piano").slow(2).room(0.5),
+  sound("bd sd bd sd").gain(0.8),
+  sound("hh*8").gain(0.4)
 )`;
 
 export default function App() {
