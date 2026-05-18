@@ -26,20 +26,15 @@ export default function useStrudel() {
     // all sample file paths as /api/strudel/... rather than https://strudel.cc/...
     // Both the manifest and every WAV fetch go through the Express proxy,
     // which is server-to-server and has no CORS restriction.
-    samples('/api/strudel/strudel.json', '/api/strudel/')
+    // piano.json is served locally; audio files load from GitHub raw (cors: *)
+    samples('/piano.json')
       .then(() => {
         setSamplesLoaded(true);
-        // Pre-fetch sample audio bytes into the browser's HTTP cache.
-        // Without this, loadBuffer() does a cold network fetch (~300ms) while the
-        // scheduler's target time is only 100ms away, so ac.currentTime > targetTime
-        // and superdough silently drops every note on first play.
-        // We limit to a small whitelist of common banks to avoid downloading the
-        // entire sample library.
-        const PREFETCH_BANKS = ['piano', 'bd', 'sd', 'hh', 'cp'];
+        // Pre-warm the browser HTTP cache for all piano notes so loadBuffer()
+        // gets a cache hit instead of a cold ~300ms fetch that races the scheduler.
         const all = soundMap.get();
-        for (const name of PREFETCH_BANKS) {
-          const bank = all[name]?.data?.samples;
-          if (!bank) continue;
+        const bank = all['piano']?.data?.samples;
+        if (bank) {
           const urls = Array.isArray(bank) ? bank : Object.values(bank).flat();
           urls.forEach(url => {
             if (typeof url === 'string') fetch(url, { mode: 'cors' }).catch(() => {});
