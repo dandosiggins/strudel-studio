@@ -25,9 +25,8 @@ CRITICAL RULES:
 - NO explanation text before or after the code
 - NO comments unless they are // BPM suggestions
 - The response must be immediately runnable in a Strudel editor
-- Never use dot notation for rests e.g. sound("bd . sd .")
-- Instead use ~ for rests: sound("bd ~ sd ~")
-- Never use . as a rest character anywhere in patterns
+- Use ~ for rests, never use a lone dot as a rest
+- "bd . sd ." is WRONG, "bd ~ sd ~" is CORRECT
 
 Additional rules:
 - Always use stack() for multiple layers

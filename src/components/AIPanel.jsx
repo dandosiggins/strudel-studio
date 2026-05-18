@@ -35,7 +35,6 @@ export default function AIPanel({ onLoadCode }) {
       const code = (data.code || '')
         .replace(/^```[\w]*\n?/m, '')
         .replace(/\n?```$/m, '')
-        .replace(/\b\.\b/g, '~')
         .trim();
       setGenerated(code);
 
