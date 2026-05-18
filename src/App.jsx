@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from './components/Sidebar.jsx';
 import Editor from './components/Editor.jsx';
 import Controls from './components/Controls.jsx';
+import CheatSheet from './components/CheatSheet.jsx';
 import useStrudel from './hooks/useStrudel.js';
 import useRecorder from './hooks/useRecorder.js';
 import usePatterns from './hooks/usePatterns.js';
@@ -15,6 +16,8 @@ const DEFAULT_CODE = `stack(
 export default function App() {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [patternName, setPatternName] = useState('Untitled');
+  const [showCheatSheet, setShowCheatSheet] = useState(false);
+  const editorViewRef = useRef(null);
 
   const { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, setCps } = useStrudel();
   const [bpm, setBpm] = useState(() => Number(localStorage.getItem('strudel-bpm')) || 120);
@@ -41,6 +44,20 @@ export default function App() {
     savePattern(name, code);
     setPatternName(name);
   }
+
+  const insertAtCursor = useCallback((text) => {
+    const view = editorViewRef.current;
+    if (!view) {
+      navigator.clipboard?.writeText(text).catch(() => {});
+      return;
+    }
+    const pos = view.state.selection.main.head;
+    view.dispatch({
+      changes: { from: pos, insert: text },
+      selection: { anchor: pos + text.length },
+    });
+    view.focus();
+  }, []);
 
   const handlePlay = useCallback(async () => {
     await play(code);
@@ -102,6 +119,8 @@ export default function App() {
           onPlay={handlePlay}
           bpm={bpm}
           onBpmChange={setBpm}
+          showCheatSheet={showCheatSheet}
+          onToggleCheatSheet={() => setShowCheatSheet(v => !v)}
           onStop={stop}
           onStartRecording={handleRecordStart}
           onStopRecording={handleRecordStop}
@@ -109,7 +128,22 @@ export default function App() {
           error={error}
         />
 
-        <Editor code={code} onChange={setCode} isPlaying={isPlaying} />
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          <Editor
+            code={code}
+            onChange={setCode}
+            isPlaying={isPlaying}
+            onCreateEditor={(view) => { editorViewRef.current = view; }}
+          />
+          <div style={{
+            width: showCheatSheet ? 280 : 0,
+            transition: 'width 0.2s ease',
+            overflow: 'hidden',
+            flexShrink: 0,
+          }}>
+            <CheatSheet onInsert={insertAtCursor} />
+          </div>
+        </div>
       </main>
     </div>
   );

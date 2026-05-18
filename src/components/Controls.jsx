@@ -17,6 +17,8 @@ export default function Controls({
   error,
   bpm,
   onBpmChange,
+  showCheatSheet,
+  onToggleCheatSheet,
 }) {
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
@@ -118,6 +120,20 @@ export default function Controls({
           />
           <span className="text-xs text-gray-500 font-mono select-none">BPM</span>
         </div>
+
+        <div className="w-px h-5 bg-gray-700" />
+
+        <button
+          onClick={onToggleCheatSheet}
+          title={showCheatSheet ? 'Hide cheat sheet' : 'Show cheat sheet'}
+          className={`flex items-center justify-center w-7 h-7 rounded text-sm font-semibold transition-colors ${
+            showCheatSheet
+              ? 'bg-emerald-700 text-white'
+              : 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700'
+          }`}
+        >
+          ?
+        </button>
 
       </div>
 

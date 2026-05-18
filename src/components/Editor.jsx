@@ -9,15 +9,16 @@ const fullHeightTheme = EditorView.theme({
   '.cm-content': { minHeight: '100%' },
 });
 
-export default function Editor({ code, onChange, isPlaying }) {
+export default function Editor({ code, onChange, isPlaying, onCreateEditor }) {
   return (
     <div
       className={isPlaying ? 'editor-playing' : undefined}
-      style={{ height: 'calc(100vh - 80px)', overflow: 'hidden' }}
+      style={{ flex: 1, minWidth: 0, overflow: 'hidden', height: '100%' }}
     >
       <CodeMirror
         value={code}
         onChange={onChange}
+        onCreateEditor={onCreateEditor}
         extensions={[javascript(), fullHeightTheme]}
         theme={oneDark}
         height="100%"
