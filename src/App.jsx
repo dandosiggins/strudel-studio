@@ -7,6 +7,7 @@ import TutorialPanel from './components/TutorialPanel.jsx';
 import ChallengesPanel from './components/ChallengesPanel.jsx';
 import AIPanel from './components/AIPanel.jsx';
 import GenrePanel from './components/GenrePanel.jsx';
+import PerformanceMode from './components/PerformanceMode.jsx';
 import Visualizer from './components/Visualizer.jsx';
 import useStrudel from './hooks/useStrudel.js';
 import useRecorder from './hooks/useRecorder.js';
@@ -26,6 +27,7 @@ export default function App() {
   const [showChallenges, setShowChallenges] = useState(false);
   const [showAI, setShowAI] = useState(false);
   const [showGenres, setShowGenres] = useState(false);
+  const [isPerformanceMode, setIsPerformanceMode] = useState(false);
   const editorViewRef = useRef(null);
 
   const { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, getAnalyser, setCps } = useStrudel();
@@ -85,7 +87,50 @@ export default function App() {
     stop();
   }
 
+  async function handleEnterPerformance() {
+    setIsPerformanceMode(true);
+    try { await document.documentElement.requestFullscreen(); } catch (_) {}
+  }
+
+  async function handleExitPerformance() {
+    setIsPerformanceMode(false);
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch (_) {}
+    }
+  }
+
+  useEffect(() => {
+    function onFSChange() {
+      if (!document.fullscreenElement && isPerformanceMode) {
+        setIsPerformanceMode(false);
+      }
+    }
+    document.addEventListener('fullscreenchange', onFSChange);
+    return () => document.removeEventListener('fullscreenchange', onFSChange);
+  }, [isPerformanceMode]);
+
   return (
+    <>
+    {isPerformanceMode && (
+      <PerformanceMode
+        code={code}
+        onCodeChange={setCode}
+        patternName={patternName}
+        isPlaying={isPlaying}
+        onPlay={handlePlay}
+        onStop={stop}
+        bpm={bpm}
+        onBpmChange={setBpm}
+        getAnalyser={getAnalyser}
+        isRecording={isRecording}
+        isConverting={isConverting}
+        recordingTime={recordingTime}
+        samplesLoaded={samplesLoaded}
+        onStartRecording={handleRecordStart}
+        onStopRecording={handleRecordStop}
+        onExit={handleExitPerformance}
+      />
+    )}
     <div
         className="bg-gray-950 text-gray-100"
         style={{ height: '100vh', display: 'flex', flexDirection: 'row', overflow: 'hidden' }}
@@ -139,6 +184,7 @@ export default function App() {
           onToggleGenres={() => { setShowGenres(v => !v); setShowCheatSheet(false); setShowTutorial(false); setShowChallenges(false); setShowAI(false); }}
           showAI={showAI}
           onToggleAI={() => { setShowAI(v => !v); setShowCheatSheet(false); setShowTutorial(false); setShowChallenges(false); setShowGenres(false); }}
+          onEnterPerformance={handleEnterPerformance}
           onStop={stop}
           onStartRecording={handleRecordStart}
           onStopRecording={handleRecordStop}
@@ -175,5 +221,6 @@ export default function App() {
         </div>
       </main>
     </div>
+    </>
   );
 }

@@ -27,6 +27,7 @@ export default function Controls({
   onToggleGenres,
   showAI,
   onToggleAI,
+  onEnterPerformance,
 }) {
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
@@ -191,6 +192,16 @@ export default function Controls({
           ?
         </button>
 
+        <div className="w-px h-5 bg-gray-700" />
+
+        <button
+          onClick={onEnterPerformance}
+          title="Enter performance mode"
+          className="flex items-center justify-center w-7 h-7 rounded text-sm transition-colors bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700"
+        >
+          <StageIcon />
+        </button>
+
       </div>
 
       {error && (
@@ -245,6 +256,18 @@ function TrophyIcon() {
         fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       <rect x="5" y="9.5" width="3" height="1.5" rx="0.5" />
       <rect x="3" y="11" width="7" height="2" rx="0.75" />
+    </svg>
+  );
+}
+
+function StageIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+      strokeWidth="1.5" strokeLinecap="round">
+      <polyline points="1,4 1,1 4,1" />
+      <polyline points="8,1 11,1 11,4" />
+      <polyline points="11,8 11,11 8,11" />
+      <polyline points="4,11 1,11 1,8" />
     </svg>
   );
 }
