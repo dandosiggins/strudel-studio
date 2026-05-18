@@ -6,6 +6,7 @@ import CheatSheet from './components/CheatSheet.jsx';
 import TutorialPanel from './components/TutorialPanel.jsx';
 import ChallengesPanel from './components/ChallengesPanel.jsx';
 import AIPanel from './components/AIPanel.jsx';
+import GenrePanel from './components/GenrePanel.jsx';
 import Visualizer from './components/Visualizer.jsx';
 import useStrudel from './hooks/useStrudel.js';
 import useRecorder from './hooks/useRecorder.js';
@@ -24,6 +25,7 @@ export default function App() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
   const [showAI, setShowAI] = useState(false);
+  const [showGenres, setShowGenres] = useState(false);
   const editorViewRef = useRef(null);
 
   const { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, getAnalyser, setCps } = useStrudel();
@@ -128,13 +130,15 @@ export default function App() {
           bpm={bpm}
           onBpmChange={setBpm}
           showCheatSheet={showCheatSheet}
-          onToggleCheatSheet={() => { setShowCheatSheet(v => !v); setShowTutorial(false); setShowChallenges(false); setShowAI(false); }}
+          onToggleCheatSheet={() => { setShowCheatSheet(v => !v); setShowTutorial(false); setShowChallenges(false); setShowAI(false); setShowGenres(false); }}
           showTutorial={showTutorial}
-          onToggleTutorial={() => { setShowTutorial(v => !v); setShowCheatSheet(false); setShowChallenges(false); setShowAI(false); }}
+          onToggleTutorial={() => { setShowTutorial(v => !v); setShowCheatSheet(false); setShowChallenges(false); setShowAI(false); setShowGenres(false); }}
           showChallenges={showChallenges}
-          onToggleChallenges={() => { setShowChallenges(v => !v); setShowCheatSheet(false); setShowTutorial(false); setShowAI(false); }}
+          onToggleChallenges={() => { setShowChallenges(v => !v); setShowCheatSheet(false); setShowTutorial(false); setShowAI(false); setShowGenres(false); }}
+          showGenres={showGenres}
+          onToggleGenres={() => { setShowGenres(v => !v); setShowCheatSheet(false); setShowTutorial(false); setShowChallenges(false); setShowAI(false); }}
           showAI={showAI}
-          onToggleAI={() => { setShowAI(v => !v); setShowCheatSheet(false); setShowTutorial(false); setShowChallenges(false); }}
+          onToggleAI={() => { setShowAI(v => !v); setShowCheatSheet(false); setShowTutorial(false); setShowChallenges(false); setShowGenres(false); }}
           onStop={stop}
           onStartRecording={handleRecordStart}
           onStopRecording={handleRecordStop}
@@ -152,7 +156,7 @@ export default function App() {
             onCreateEditor={(view) => { editorViewRef.current = view; }}
           />
           <div style={{
-            width: (showCheatSheet || showTutorial || showChallenges || showAI) ? 300 : 0,
+            width: (showCheatSheet || showTutorial || showChallenges || showAI || showGenres) ? 300 : 0,
             transition: 'width 0.2s ease',
             overflow: 'hidden',
             flexShrink: 0,
@@ -163,6 +167,8 @@ export default function App() {
               ? <ChallengesPanel code={code} />
               : showAI
               ? <AIPanel onLoadCode={setCode} />
+              : showGenres
+              ? <GenrePanel onTryCode={setCode} />
               : <CheatSheet onInsert={insertAtCursor} />
             }
           </div>

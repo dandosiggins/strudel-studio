@@ -23,6 +23,8 @@ export default function Controls({
   onToggleTutorial,
   showChallenges,
   onToggleChallenges,
+  showGenres,
+  onToggleGenres,
   showAI,
   onToggleAI,
 }) {
@@ -154,6 +156,18 @@ export default function Controls({
         </button>
 
         <button
+          onClick={onToggleGenres}
+          title={showGenres ? 'Hide genre guides' : 'Open genre guides'}
+          className={`flex items-center justify-center gap-1.5 px-2.5 h-7 rounded text-xs font-medium transition-colors ${
+            showGenres
+              ? 'bg-emerald-700 text-white'
+              : 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700'
+          }`}
+        >
+          <MusicNoteIcon /> Genres
+        </button>
+
+        <button
           onClick={onToggleAI}
           title={showAI ? 'Hide AI assistant' : 'Open AI assistant'}
           className={`flex items-center justify-center w-7 h-7 rounded text-sm transition-colors ${
@@ -231,6 +245,14 @@ function TrophyIcon() {
         fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       <rect x="5" y="9.5" width="3" height="1.5" rx="0.5" />
       <rect x="3" y="11" width="7" height="2" rx="0.75" />
+    </svg>
+  );
+}
+
+function MusicNoteIcon() {
+  return (
+    <svg width="11" height="12" viewBox="0 0 13 14" fill="currentColor">
+      <path d="M5 10.5 V3 l6 -1.5 v2 L7 4.5 V11 a2 2 0 1 1-2-0.5z" />
     </svg>
   );
 }
