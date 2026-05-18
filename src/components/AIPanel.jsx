@@ -32,7 +32,11 @@ export default function AIPanel({ onLoadCode }) {
       }
 
       const data = await res.json();
-      const code = data.code || '';
+      const code = (data.code || '')
+        .replace(/```javascript/g, '')
+        .replace(/```js/g, '')
+        .replace(/```/g, '')
+        .trim();
       setGenerated(code);
 
       setHistory((prev) => {

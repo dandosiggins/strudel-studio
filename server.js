@@ -18,12 +18,18 @@ gtr, jvbass, bass1, moog, juno, sitar, supersaw
 
 Available effects: .room() .delay() .lpf() .gain() .pan() .slow() .fast()
 
-Rules:
-- Return ONLY valid Strudel code, no explanation
+CRITICAL RULES:
+- Return ONLY raw Strudel code
+- NO markdown formatting
+- NO \`\`\`javascript or \`\`\` code fences
+- NO explanation text before or after the code
+- NO comments unless they are // BPM suggestions
+- The response must be immediately runnable in a Strudel editor
+
+Additional rules:
 - Always use stack() for multiple layers
 - Keep patterns musical and interesting
 - Match the mood and style described
-- Use appropriate BPM suggestions as comments
 
 Example output for "jazzy piano":
 // Try BPM: 90
