@@ -7,8 +7,11 @@ function formatTime(s) {
 }
 
 const VIZ_NAMES = ['Spectrum', 'Waveform', 'Circular', 'Particles', 'Tunnel'];
-const FRAME_MS = 1000 / 30; // 30 fps cap
+const FRAME_MS = 1000 / 30;
 const VIZ_STORAGE_KEY = 'strudel-viz';
+const OFFSCREEN_OK =
+  typeof HTMLCanvasElement !== 'undefined' &&
+  typeof HTMLCanvasElement.prototype.transferControlToOffscreen === 'function';
 
 // ── Draw functions ─────────────────────────────────────────────────────────
 
@@ -236,104 +239,157 @@ function drawTunnel(ctx, w, h, data, analyser, time) {
 
 // ── Canvas hook ────────────────────────────────────────────────────────────
 
-function usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef, vizEnabledRef }) {
+function useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef, vizEnabledRef }) {
   const isPlayingRef = useRef(isPlaying);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-  const particlesRef = useRef([]);
+  const workerRef = useRef(null);
   const freqBufRef = useRef(null);
   const waveBufRef = useRef(null);
+  // fallback-only state
+  const particlesRef = useRef([]);
   const lastDrawRef = useRef(0);
 
+  // ── Init: transfer canvas to worker, or set up 2D fallback ────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    function resize() {
-      const dpr = window.devicePixelRatio || 1;
+    if (OFFSCREEN_OK) {
+      const worker = new Worker(
+        new URL('../workers/vizWorker.js', import.meta.url),
+        { type: 'module' }
+      );
+      workerRef.current = worker;
+      const offscreen = canvas.transferControlToOffscreen();
       const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
-    }
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
-    resize();
-    return () => ro.disconnect();
-  }, [canvasRef]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    let raf;
-    let rotation = 0;
-    let time = 0;
-
-    function draw(timestamp) {
-      if (document.hidden) { raf = requestAnimationFrame(draw); return; }
-      raf = requestAnimationFrame(draw);
-
-      if (timestamp - lastDrawRef.current < FRAME_MS) return;
-      lastDrawRef.current = timestamp;
-
       const dpr = window.devicePixelRatio || 1;
-      const w = canvas.width / dpr;
-      const h = canvas.height / dpr;
-      const ctx = canvas.getContext('2d');
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const analyser = getAnalyser();
-      const vizIdx = vizIndexRef.current;
-
-      if (!analyser || !isPlayingRef.current || !vizEnabledRef.current) {
-        if (vizIdx === 3) particlesRef.current = [];
-        drawIdle(ctx, w, h);
-        return;
-      }
-
-      time++;
-      rotation += 0.005; // slightly faster per draw since we draw less often
-
-      const binCount = analyser.frequencyBinCount;
-      if (!freqBufRef.current || freqBufRef.current.length !== binCount) {
-        freqBufRef.current = new Uint8Array(binCount);
-      }
-      analyser.getByteFrequencyData(freqBufRef.current);
-      const freqData = freqBufRef.current;
-
-      // Edge glow (shared across all visualizers)
-      let bassSum = 0;
-      for (let i = 0; i < 8; i++) bassSum += freqData[i];
-      const bass = bassSum / (8 * 255);
-      if (edgeRef.current) {
-        const r = Math.round(bass * 160);
-        const a1 = (bass * 0.28).toFixed(3);
-        const a2 = (bass * 0.12).toFixed(3);
-        edgeRef.current.style.boxShadow =
-          `inset 0 0 ${r}px rgba(52,211,153,${a1}), inset 0 0 ${r * 2}px rgba(16,185,129,${a2})`;
-      }
-
-      if (vizIdx === 1) {
-        const fftSize = analyser.fftSize;
-        if (!waveBufRef.current || waveBufRef.current.length !== fftSize) {
-          waveBufRef.current = new Uint8Array(fftSize);
-        }
-        analyser.getByteTimeDomainData(waveBufRef.current);
-        drawWaveform(ctx, w, h, waveBufRef.current);
-      } else if (vizIdx === 2) {
-        drawCircular(ctx, w, h, freqData, analyser, rotation);
-      } else if (vizIdx === 3) {
-        drawParticles(ctx, w, h, freqData, particlesRef);
-      } else if (vizIdx === 4) {
-        drawTunnel(ctx, w, h, freqData, analyser, time);
-      } else {
-        drawSpectrum(ctx, w, h, freqData, analyser);
-      }
+      worker.postMessage(
+        { type: 'init', canvas: offscreen, mode: 'perf', w: rect.width, h: rect.height, dpr },
+        [offscreen]
+      );
+      const ro = new ResizeObserver(() => {
+        const r = canvas.getBoundingClientRect();
+        workerRef.current?.postMessage({
+          type: 'resize', w: r.width, h: r.height, dpr: window.devicePixelRatio || 1,
+        });
+      });
+      ro.observe(canvas);
+      return () => {
+        ro.disconnect();
+        worker.terminate();
+        workerRef.current = null;
+        if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
+      };
+    } else {
+      const resize = () => {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+      };
+      const ro = new ResizeObserver(resize);
+      ro.observe(canvas);
+      resize();
+      return () => {
+        ro.disconnect();
+        if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
+      };
     }
+  }, [canvasRef, edgeRef]);
 
-    raf = requestAnimationFrame(draw);
-    return () => {
-      cancelAnimationFrame(raf);
-      if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
-    };
-  }, [canvasRef, edgeRef, getAnalyser, vizIndexRef]);
+  // ── Render loop: setInterval → worker, or fallback RAF ────────────────
+  useEffect(() => {
+    if (OFFSCREEN_OK) {
+      const id = setInterval(() => {
+        const worker = workerRef.current;
+        if (!worker) return;
+        const playing = isPlayingRef.current && vizEnabledRef.current;
+        const vizIdx = vizIndexRef.current;
+        const analyser = getAnalyser();
+        if (!playing || !analyser) {
+          worker.postMessage({ type: 'draw', isPlaying: false, mode: 'perf', vizIdx });
+          if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
+          return;
+        }
+        const binCount = analyser.frequencyBinCount;
+        if (!freqBufRef.current || freqBufRef.current.length !== binCount) {
+          freqBufRef.current = new Uint8Array(binCount);
+        }
+        analyser.getByteFrequencyData(freqBufRef.current);
+        // Edge glow stays on main thread — it's a DOM update, not canvas
+        let bassSum = 0;
+        for (let i = 0; i < 8; i++) bassSum += freqBufRef.current[i];
+        const bass = bassSum / (8 * 255);
+        if (edgeRef.current) {
+          const r = Math.round(bass * 160);
+          edgeRef.current.style.boxShadow =
+            `inset 0 0 ${r}px rgba(52,211,153,${(bass * 0.28).toFixed(3)}), inset 0 0 ${r * 2}px rgba(16,185,129,${(bass * 0.12).toFixed(3)})`;
+        }
+        let waveCopy;
+        if (vizIdx === 1) {
+          const fftSize = analyser.fftSize;
+          if (!waveBufRef.current || waveBufRef.current.length !== fftSize) {
+            waveBufRef.current = new Uint8Array(fftSize);
+          }
+          analyser.getByteTimeDomainData(waveBufRef.current);
+          waveCopy = waveBufRef.current.slice();
+        }
+        worker.postMessage({
+          type: 'draw', isPlaying: true, mode: 'perf', vizIdx,
+          freqData: freqBufRef.current.slice(),
+          waveData: waveCopy,
+        });
+      }, FRAME_MS);
+      return () => clearInterval(id);
+    } else {
+      // Fallback: throttled RAF on main thread
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      let raf, rotation = 0, time = 0;
+      function draw(timestamp) {
+        if (document.hidden) { raf = requestAnimationFrame(draw); return; }
+        raf = requestAnimationFrame(draw);
+        if (timestamp - lastDrawRef.current < FRAME_MS) return;
+        lastDrawRef.current = timestamp;
+        const dpr = window.devicePixelRatio || 1;
+        const w = canvas.width / dpr, h = canvas.height / dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const analyser = getAnalyser();
+        const vizIdx = vizIndexRef.current;
+        if (!analyser || !isPlayingRef.current || !vizEnabledRef.current) {
+          if (vizIdx === 3) particlesRef.current = [];
+          drawIdle(ctx, w, h);
+          return;
+        }
+        time++; rotation += 0.005;
+        const binCount = analyser.frequencyBinCount;
+        if (!freqBufRef.current || freqBufRef.current.length !== binCount) freqBufRef.current = new Uint8Array(binCount);
+        analyser.getByteFrequencyData(freqBufRef.current);
+        const freqData = freqBufRef.current;
+        let bassSum = 0;
+        for (let i = 0; i < 8; i++) bassSum += freqData[i];
+        const bass = bassSum / (8 * 255);
+        if (edgeRef.current) {
+          const r = Math.round(bass * 160);
+          edgeRef.current.style.boxShadow =
+            `inset 0 0 ${r}px rgba(52,211,153,${(bass * 0.28).toFixed(3)}), inset 0 0 ${r * 2}px rgba(16,185,129,${(bass * 0.12).toFixed(3)})`;
+        }
+        const fftSize = analyser.fftSize;
+        if (!waveBufRef.current || waveBufRef.current.length !== fftSize) waveBufRef.current = new Uint8Array(fftSize);
+        analyser.getByteTimeDomainData(waveBufRef.current);
+        if (vizIdx === 1) drawWaveform(ctx, w, h, waveBufRef.current);
+        else if (vizIdx === 2) drawCircular(ctx, w, h, freqData, analyser, rotation);
+        else if (vizIdx === 3) drawParticles(ctx, w, h, freqData, particlesRef);
+        else if (vizIdx === 4) drawTunnel(ctx, w, h, freqData, analyser, time);
+        else drawSpectrum(ctx, w, h, freqData, analyser);
+      }
+      raf = requestAnimationFrame(draw);
+      return () => {
+        cancelAnimationFrame(raf);
+        if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
+      };
+    }
+  }, [canvasRef, edgeRef, getAnalyser, vizIndexRef, vizEnabledRef]);
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -420,7 +476,7 @@ export default function PerformanceMode({
     return () => window.removeEventListener('keydown', onKey);
   }, [isPlaying, isRecording, onPlay, onStop, onStartRecording, onStopRecording, onExit]);
 
-  usePerformanceCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef, vizEnabledRef });
+  useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef, vizEnabledRef });
 
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
