@@ -1,5 +1,51 @@
 import { useState, useRef } from 'react';
 
+// ── Built-in presets ──────────────────────────────────────────────────────────
+
+const PRESETS = [
+  {
+    name: 'Void',
+    description: 'Dark ambient',
+    code: `stack(
+  // Deep drone pad — slow filter sweep
+  note("c2 g2").sound("juno").slow(8).room(0.95).lpf(sine.range(200, 800).slow(16)).gain(0.6),
+
+  // Mid layer — evolving supersaw
+  note("<c3 eb3 g3> <bb2 d3 f3>").sound("supersaw").slow(8).room(0.9).gain(0.35).pan(sine.range(-0.5, 0.5).slow(20)),
+
+  // High shimmer — sparse piano notes
+  note("c5 ~ ~ ~ g4 ~ ~ ~ eb5 ~ ~ ~").sound("piano").room(0.95).gain(0.3).delay(0.7).slow(2),
+
+  // Sub bass pulse
+  note("c1 ~ ~ ~ ~ ~ ~ ~").sound("moog").lpf(150).gain(0.7).slow(2),
+
+  // Very sparse percussion
+  sound("bd ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~").gain(0.4).room(0.8)
+)`,
+  },
+  {
+    name: 'Midnight Drive',
+    description: 'Dark synthwave',
+    code: `stack(
+  note("<c3 eb3 g3 bb3> <f3 ab3 c4 eb4>").sound("supersaw").slow(4).room(0.5).lpf(1200).gain(0.6),
+  note("c2 ~ g2 ~ f2 ~ eb2 ~").sound("moog").lpf(600).gain(0.8).slow(2),
+  sound("bd ~ bd ~").gain(0.85),
+  sound("~ sd ~ sd").gain(0.7),
+  sound("hh*8").gain(0.25).lpf(6000)
+)`,
+  },
+  {
+    name: 'Forest',
+    description: 'Organic ambient',
+    code: `stack(
+  note("c4 e4 g4 b4").sound("piano").slow(4).room(0.9).delay(0.5).gain(0.4),
+  note("g3 d4 a3 e4").sound("juno").slow(8).room(0.95).gain(0.3).lpf(sine.range(300, 1200).slow(12)),
+  note("c2 g2 f2 eb2").sound("jvbass").slow(4).gain(0.5).room(0.6).lpf(400),
+  sound("bd ~ ~ ~ ~ ~ bd ~ ~ ~ ~ ~").gain(0.35).room(0.7)
+)`,
+  },
+];
+
 function triggerDownload(content, filename) {
   const blob = new Blob([content], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -121,39 +167,58 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Section label */}
-      <div className="px-4 pt-3 pb-1 flex items-center gap-2">
-        <span className="text-xs font-semibold text-gray-600 uppercase tracking-widest">
-          Patterns
-        </span>
-        <div className="flex-1 h-px bg-gray-800/80" />
-      </div>
+      {/* Scrollable list area — presets first, then user patterns */}
+      <div className="flex-1 overflow-y-auto pb-2 min-h-0">
 
-      {/* Pattern list */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2">
-        {patterns.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
-            <MusicNoteIcon />
-            <p className="text-xs text-gray-600 italic leading-relaxed">
-              No saved patterns yet.<br />Hit Save to store one.
-            </p>
-          </div>
-        ) : (
-          patterns.map((p) => (
-            <PatternItem
-              key={p.id}
-              pattern={p}
-              isEditing={editingId === p.id}
-              editingName={editingName}
-              onEditingNameChange={setEditingName}
+        {/* Presets section */}
+        <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+          <span className="text-xs font-semibold text-gray-600 uppercase tracking-widest">
+            Presets
+          </span>
+          <div className="flex-1 h-px bg-gray-800/80" />
+        </div>
+        <div className="px-2">
+          {PRESETS.map((p) => (
+            <PresetItem
+              key={p.name}
+              preset={p}
               onLoad={() => onLoad(p)}
-              onExport={() => handleExportOne(p)}
-              onDelete={() => onDelete(p.id)}
-              onStartRename={() => startRename(p)}
-              onCommitRename={() => commitRename(p)}
             />
-          ))
-        )}
+          ))}
+        </div>
+
+        {/* User patterns section */}
+        <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+          <span className="text-xs font-semibold text-gray-600 uppercase tracking-widest">
+            My Patterns
+          </span>
+          <div className="flex-1 h-px bg-gray-800/80" />
+        </div>
+        <div className="px-2">
+          {patterns.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+              <MusicNoteIcon />
+              <p className="text-xs text-gray-600 italic leading-relaxed">
+                No saved patterns yet.<br />Hit Save to store one.
+              </p>
+            </div>
+          ) : (
+            patterns.map((p) => (
+              <PatternItem
+                key={p.id}
+                pattern={p}
+                isEditing={editingId === p.id}
+                editingName={editingName}
+                onEditingNameChange={setEditingName}
+                onLoad={() => onLoad(p)}
+                onExport={() => handleExportOne(p)}
+                onDelete={() => onDelete(p.id)}
+                onStartRename={() => startRename(p)}
+                onCommitRename={() => commitRename(p)}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       {/* Import/export toolbar */}
@@ -189,6 +254,29 @@ export default function Sidebar({
         </button>
       </div>
     </aside>
+  );
+}
+
+function PresetItem({ preset, onLoad }) {
+  return (
+    <div className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-800/40 rounded-md group">
+      <DiamondIcon className="text-indigo-500/60 flex-shrink-0 group-hover:text-indigo-400/80 transition-colors" />
+      <div className="flex-1 min-w-0">
+        <span className="block text-xs text-gray-400 font-mono truncate">
+          {preset.name}
+        </span>
+        <span className="block text-xs text-gray-700 truncate">
+          {preset.description}
+        </span>
+      </div>
+      <button
+        onClick={onLoad}
+        title="Load preset"
+        className="text-xs px-2 py-0.5 rounded bg-indigo-900/50 hover:bg-indigo-700 text-indigo-400 hover:text-white transition-colors font-medium flex-shrink-0"
+      >
+        Load
+      </button>
+    </div>
   );
 }
 
@@ -251,6 +339,14 @@ function PatternItem({
         ×
       </button>
     </div>
+  );
+}
+
+function DiamondIcon({ className }) {
+  return (
+    <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor" className={className}>
+      <polygon points="5,0 10,5 5,10 0,5" />
+    </svg>
   );
 }
 
