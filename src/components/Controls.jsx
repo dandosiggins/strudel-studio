@@ -21,6 +21,8 @@ export default function Controls({
   onToggleCheatSheet,
   showTutorial,
   onToggleTutorial,
+  showChallenges,
+  onToggleChallenges,
 }) {
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
@@ -126,6 +128,18 @@ export default function Controls({
         <div className="w-px h-5 bg-gray-700" />
 
         <button
+          onClick={onToggleChallenges}
+          title={showChallenges ? 'Hide challenges' : 'Open challenges'}
+          className={`flex items-center justify-center gap-1.5 px-2.5 h-7 rounded text-xs font-medium transition-colors ${
+            showChallenges
+              ? 'bg-amber-700 text-white'
+              : 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700'
+          }`}
+        >
+          <TrophyIcon /> Challenges
+        </button>
+
+        <button
           onClick={onToggleTutorial}
           title={showTutorial ? 'Hide tutorial' : 'Open tutorial'}
           className={`flex items-center justify-center gap-1.5 px-2.5 h-7 rounded text-xs font-medium transition-colors ${
@@ -189,6 +203,20 @@ function RecordDot({ className }) {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" className={className}>
       <circle cx="5" cy="5" r="4.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TrophyIcon() {
+  return (
+    <svg width="12" height="13" viewBox="0 0 13 14" fill="currentColor">
+      <path d="M2.5 0.5 h8 v5.5 q0 3-4 3.5 Q2.5 9 2.5 6 Z" />
+      <path d="M2.5 2 H1 a1.2 1.2 0 0 0 0 2.5 h1.5"
+        fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M10.5 2 h1.5 a1.2 1.2 0 0 1 0 2.5 h-1.5"
+        fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <rect x="5" y="9.5" width="3" height="1.5" rx="0.5" />
+      <rect x="3" y="11" width="7" height="2" rx="0.75" />
     </svg>
   );
 }

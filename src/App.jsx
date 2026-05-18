@@ -4,6 +4,7 @@ import Editor from './components/Editor.jsx';
 import Controls from './components/Controls.jsx';
 import CheatSheet from './components/CheatSheet.jsx';
 import TutorialPanel from './components/TutorialPanel.jsx';
+import ChallengesPanel from './components/ChallengesPanel.jsx';
 import Visualizer from './components/Visualizer.jsx';
 import useStrudel from './hooks/useStrudel.js';
 import useRecorder from './hooks/useRecorder.js';
@@ -20,6 +21,7 @@ export default function App() {
   const [patternName, setPatternName] = useState('Untitled');
   const [showCheatSheet, setShowCheatSheet] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showChallenges, setShowChallenges] = useState(false);
   const editorViewRef = useRef(null);
 
   const { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, getAnalyser, setCps } = useStrudel();
@@ -124,9 +126,11 @@ export default function App() {
           bpm={bpm}
           onBpmChange={setBpm}
           showCheatSheet={showCheatSheet}
-          onToggleCheatSheet={() => { setShowCheatSheet(v => !v); setShowTutorial(false); }}
+          onToggleCheatSheet={() => { setShowCheatSheet(v => !v); setShowTutorial(false); setShowChallenges(false); }}
           showTutorial={showTutorial}
-          onToggleTutorial={() => { setShowTutorial(v => !v); setShowCheatSheet(false); }}
+          onToggleTutorial={() => { setShowTutorial(v => !v); setShowCheatSheet(false); setShowChallenges(false); }}
+          showChallenges={showChallenges}
+          onToggleChallenges={() => { setShowChallenges(v => !v); setShowCheatSheet(false); setShowTutorial(false); }}
           onStop={stop}
           onStartRecording={handleRecordStart}
           onStopRecording={handleRecordStop}
@@ -144,13 +148,15 @@ export default function App() {
             onCreateEditor={(view) => { editorViewRef.current = view; }}
           />
           <div style={{
-            width: (showCheatSheet || showTutorial) ? 300 : 0,
+            width: (showCheatSheet || showTutorial || showChallenges) ? 300 : 0,
             transition: 'width 0.2s ease',
             overflow: 'hidden',
             flexShrink: 0,
           }}>
             {showTutorial
               ? <TutorialPanel onTryCode={setCode} />
+              : showChallenges
+              ? <ChallengesPanel code={code} />
               : <CheatSheet onInsert={insertAtCursor} />
             }
           </div>
