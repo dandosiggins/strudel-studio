@@ -9,6 +9,19 @@ const SECTIONS = [
     ],
   },
   {
+    title: 'Instruments',
+    items: [
+      { code: 'note("c3 e3 g3").sound("gtr")', desc: 'guitar' },
+      { code: 'note("c2 e2").sound("jvbass")', desc: 'bass guitar' },
+      { code: 'note("c3 e3 g3").sound("moog")', desc: 'moog bass' },
+      { code: 'note("c3 e3 g3").sound("juno")', desc: 'juno pad / strings' },
+      { code: 'note("c3 e3 g3").sound("supersaw")', desc: 'supersaw synth' },
+      { code: 'note("c3 e3 g3").sound("supersaw").room(0.4)', desc: 'pad synth' },
+      { code: 'note("c3 e3").sound("sitar")', desc: 'sitar strings' },
+      { code: 'note("c4 e4 g4").sound("triangle").lpf(2000).room(0.3)', desc: 'flute-like' },
+    ],
+  },
+  {
     title: 'Rhythm & Timing',
     items: [
       { code: '.slow(2)', desc: 'half speed' },
