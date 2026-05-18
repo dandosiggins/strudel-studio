@@ -94,7 +94,11 @@ export default function useStrudel() {
     setIsPlaying(false);
   }, []);
 
+  const setCps = useCallback((cps) => {
+    engineRef.current?.setCps(cps);
+  }, []);
+
   const getStream = useCallback(() => streamRef.current, []);
 
-  return { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream };
+  return { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, setCps };
 }

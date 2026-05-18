@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar.jsx';
 import Editor from './components/Editor.jsx';
 import Controls from './components/Controls.jsx';
@@ -16,7 +16,13 @@ export default function App() {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [patternName, setPatternName] = useState('Untitled');
 
-  const { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream } = useStrudel();
+  const { play, stop, initAudio, isPlaying, error, samplesLoaded, getStream, setCps } = useStrudel();
+  const [bpm, setBpm] = useState(() => Number(localStorage.getItem('strudel-bpm')) || 120);
+
+  useEffect(() => {
+    localStorage.setItem('strudel-bpm', bpm);
+    setCps(bpm / 60 / 4);
+  }, [bpm, setCps]);
   const { isRecording, isConverting, startRecording, stopRecording, recordingTime } =
     useRecorder(getStream);
   const { patterns, savePattern, deletePattern, renamePattern } = usePatterns();
@@ -36,10 +42,16 @@ export default function App() {
     setPatternName(name);
   }
 
+  const handlePlay = useCallback(async () => {
+    await play(code);
+    setCps(bpm / 60 / 4);
+  }, [play, setCps, code, bpm]);
+
   async function handleRecordStart() {
     await initAudio();
     startRecording();
-    play(code);
+    await play(code);
+    setCps(bpm / 60 / 4);
   }
 
   function handleRecordStop() {
@@ -87,7 +99,9 @@ export default function App() {
           isRecording={isRecording}
           isConverting={isConverting}
           samplesLoaded={samplesLoaded}
-          onPlay={() => play(code)}
+          onPlay={handlePlay}
+          bpm={bpm}
+          onBpmChange={setBpm}
           onStop={stop}
           onStartRecording={handleRecordStart}
           onStopRecording={handleRecordStop}

@@ -15,6 +15,8 @@ export default function Controls({
   onStopRecording,
   recordingTime,
   error,
+  bpm,
+  onBpmChange,
 }) {
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
@@ -88,6 +90,34 @@ export default function Controls({
             Converting to WAV…
           </span>
         )}
+
+        <div className="w-px h-5 bg-gray-700 ml-auto" />
+
+        {/* BPM control */}
+        <div className="flex items-center gap-2">
+          <input
+            type="range"
+            min="60" max="180" step="1"
+            value={bpm}
+            onChange={e => onBpmChange(Number(e.target.value))}
+            className="w-24 accent-emerald-500 cursor-pointer"
+          />
+          <input
+            type="number"
+            min="60" max="180" step="1"
+            value={bpm}
+            onChange={e => {
+              const n = parseInt(e.target.value, 10);
+              if (!isNaN(n) && n >= 60 && n <= 180) onBpmChange(n);
+            }}
+            onBlur={e => {
+              const n = Math.max(60, Math.min(180, parseInt(e.target.value, 10) || 120));
+              onBpmChange(n);
+            }}
+            className="w-12 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded px-1.5 py-0.5 text-center tabular-nums focus:outline-none focus:border-gray-500"
+          />
+          <span className="text-xs text-gray-500 font-mono select-none">BPM</span>
+        </div>
 
       </div>
 
