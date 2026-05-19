@@ -107,14 +107,11 @@ function drawSpectrum(ctx, w, h, data) {
     const halfH = Math.max(1, v * cy * 0.88);
     const alpha = (0.08 + v * 0.92).toFixed(2);
     const green = Math.round(150 + v * 61);
-    ctx.shadowColor = `rgba(52,211,153,${(v * 0.85).toFixed(2)})`;
-    ctx.shadowBlur = v > 0.15 ? 8 + v * 18 : 0;
     ctx.fillStyle = `rgba(52,${green},99,${alpha})`;
     const rx = cx + i * step, lx = cx - (i + 1) * step;
     ctx.fillRect(rx, cy - halfH, barW, halfH * 2);
     ctx.fillRect(lx, cy - halfH, barW, halfH * 2);
     if (v > 0.2) {
-      ctx.shadowBlur = 0;
       ctx.fillStyle = `rgba(167,243,208,${Math.min(1, v * 1.3).toFixed(2)})`;
       ctx.fillRect(rx, cy - halfH, barW, 2);
       ctx.fillRect(rx, cy + halfH - 2, barW, 2);
@@ -122,7 +119,6 @@ function drawSpectrum(ctx, w, h, data) {
       ctx.fillRect(lx, cy + halfH - 2, barW, 2);
     }
   }
-  ctx.shadowBlur = 0;
 }
 
 // ── Waveform ───────────────────────────────────────────────────────────────
@@ -136,8 +132,6 @@ function drawWaveform(ctx, w, h, waveData) {
   const avg = sum / waveData.length / 128;
   ctx.lineWidth = 1.5 + avg * 3;
   ctx.strokeStyle = `rgba(52,211,153,${(0.55 + avg * 0.45).toFixed(2)})`;
-  ctx.shadowColor = 'rgba(52,211,153,0.7)';
-  ctx.shadowBlur = 6 + avg * 22;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -156,7 +150,6 @@ function drawWaveform(ctx, w, h, waveData) {
     }
   }
   ctx.stroke();
-  ctx.shadowBlur = 0;
 }
 
 // ── Circular ───────────────────────────────────────────────────────────────
@@ -175,10 +168,7 @@ function drawCircular(ctx, w, h, data) {
   ctx.arc(cx, cy, base * (0.85 + bass * 0.35), 0, Math.PI * 2);
   ctx.strokeStyle = `rgba(52,211,153,${(0.15 + bass * 0.45).toFixed(2)})`;
   ctx.lineWidth = 1.5 + bass * 3;
-  ctx.shadowColor = 'rgba(52,211,153,0.6)';
-  ctx.shadowBlur = bass > 0.2 ? 15 + bass * 25 : 5;
   ctx.stroke();
-  ctx.shadowBlur = 0;
   for (let i = 0; i < numBars; i++) {
     const bin = Math.floor((i / numBars) * usedBins);
     const v = data[bin] / 255;
@@ -188,14 +178,11 @@ function drawCircular(ctx, w, h, data) {
     const x2 = cx + Math.cos(angle) * (base + len), y2 = cy + Math.sin(angle) * (base + len);
     ctx.strokeStyle = `rgba(52,${Math.round(150 + v * 61)},99,${(0.15 + v * 0.85).toFixed(2)})`;
     ctx.lineWidth = Math.max(1, 1.5 + v * 2);
-    ctx.shadowColor = v > 0.6 ? `rgba(167,243,208,${(v * 0.8).toFixed(2)})` : 'transparent';
-    ctx.shadowBlur = v > 0.6 ? v * 15 : 0;
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
   }
-  ctx.shadowBlur = 0;
 }
 
 // ── Particles ──────────────────────────────────────────────────────────────
@@ -233,9 +220,7 @@ function drawParticles(ctx, w, h, data) {
     ctx.beginPath();
     ctx.arc(p.x, p.y, Math.max(0.5, p.size * p.life), 0, Math.PI * 2);
     ctx.fillStyle = `rgba(${rb},${Math.min(255, 150 + wh)},${rb},${a.toFixed(2)})`;
-    if (p.brightness > 0.5) { ctx.shadowColor = 'rgba(167,243,208,0.6)'; ctx.shadowBlur = p.size * 3; }
     ctx.fill();
-    ctx.shadowBlur = 0;
   }
 }
 
@@ -261,8 +246,6 @@ function drawTunnel(ctx, w, h, data) {
     const green = Math.round(130 + bass * 80 * (1 - norm));
     ctx.lineWidth = Math.max(0.5, 1 + (1 - norm) * 2 + bass * 3 * (1 - norm));
     ctx.strokeStyle = `rgba(52,${green},99,${alpha.toFixed(2)})`;
-    ctx.shadowColor = bass > 0.3 ? `rgba(52,211,153,${Math.min(1, alpha * 1.5).toFixed(2)})` : 'transparent';
-    ctx.shadowBlur = bass > 0.3 ? 10 + bass * 20 : 0;
     if (wobble > 2) {
       ctx.beginPath();
       for (let s = 0; s <= 64; s++) {
@@ -278,5 +261,4 @@ function drawTunnel(ctx, w, h, data) {
     }
     ctx.stroke();
   }
-  ctx.shadowBlur = 0;
 }

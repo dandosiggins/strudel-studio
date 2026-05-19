@@ -8,27 +8,17 @@ const OFFSCREEN_OK =
 
 export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }) {
   const canvasRef = useRef(null);
-  // Worker path
   const workerRef = useRef(null);
-  const intervalRef = useRef(null);
-  // Fallback path (no OffscreenCanvas)
-  const ctx2dRef = useRef(null);
   const rafRef = useRef(null);
+  const ctx2dRef = useRef(null);
   const wRef = useRef(0);
   const lastDrawRef = useRef(0);
-  // Shared
   const freqBufRef = useRef(null);
-  const isPlayingRef = useRef(isPlaying);
-  const vizEnabledRef = useRef(vizEnabled);
 
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-  useEffect(() => { vizEnabledRef.current = vizEnabled; }, [vizEnabled]);
-
-  // ── Canvas init ────────────────────────────────────────────────────────
+  // ── Canvas init (once on mount) ────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     if (OFFSCREEN_OK) {
       const worker = new Worker(
         new URL('../workers/vizWorker.js', import.meta.url),
@@ -42,11 +32,9 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
         [offscreen]
       );
       const ro = new ResizeObserver(() => {
-        if (workerRef.current) {
-          workerRef.current.postMessage({
-            type: 'resize', w: canvas.clientWidth, h: H, dpr: window.devicePixelRatio || 1,
-          });
-        }
+        workerRef.current?.postMessage({
+          type: 'resize', w: canvas.clientWidth, h: H, dpr: window.devicePixelRatio || 1,
+        });
       });
       ro.observe(canvas);
       return () => {
@@ -55,7 +43,6 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
         workerRef.current = null;
       };
     } else {
-      // Fallback: 2D context on main thread
       const ctx2d = canvas.getContext('2d');
       ctx2dRef.current = ctx2d;
       const dpr = window.devicePixelRatio || 1;
@@ -72,7 +59,6 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
     }
   }, []);
 
-  // ── Fallback idle draw ─────────────────────────────────────────────────
   const drawFallbackIdle = useCallback(() => {
     const ctx2d = ctx2dRef.current;
     if (!ctx2d) return;
@@ -84,16 +70,21 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
     for (let i = 0; i < 80; i++) ctx2d.fillRect(i * gap, H - 2, barW, 2);
   }, []);
 
-  // ── Render loop ────────────────────────────────────────────────────────
+  // ── Render loop — starts/stops cleanly with isPlaying + vizEnabled ─────
+  // When both are true: run the loop. Otherwise: stop everything.
+  // This matches the original behavior where RAF was fully cancelled when idle.
   useEffect(() => {
     if (OFFSCREEN_OK) {
-      // setInterval feeds the worker — stays off the hot RAF callback path
+      if (!isPlaying || !vizEnabled) {
+        // Send one idle frame so the canvas shows the dim rest state
+        workerRef.current?.postMessage({ type: 'draw', isPlaying: false, mode: 'main' });
+        return; // no interval — main thread is quiet
+      }
       const id = setInterval(() => {
         const worker = workerRef.current;
         if (!worker) return;
-        const playing = isPlayingRef.current && vizEnabledRef.current;
         const analyser = getAnalyser();
-        if (!playing || !analyser) {
+        if (!analyser) {
           worker.postMessage({ type: 'draw', isPlaying: false, mode: 'main' });
           return;
         }
@@ -107,10 +98,14 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
           freqData: freqBufRef.current.slice(),
         });
       }, FRAME_MS);
-      intervalRef.current = id;
       return () => clearInterval(id);
     } else {
-      // Fallback: throttled RAF on main thread
+      // Fallback: throttled RAF — also stopped completely when not active
+      if (!isPlaying || !vizEnabled) {
+        cancelAnimationFrame(rafRef.current);
+        drawFallbackIdle();
+        return;
+      }
       const animate = (timestamp) => {
         rafRef.current = requestAnimationFrame(animate);
         if (document.hidden) return;
@@ -118,16 +113,15 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
         lastDrawRef.current = timestamp;
         const ctx2d = ctx2dRef.current;
         if (!ctx2d) return;
-        const playing = isPlayingRef.current && vizEnabledRef.current;
         const analyser = getAnalyser();
-        const w = wRef.current;
-        if (!playing || !analyser) { drawFallbackIdle(); return; }
+        if (!analyser) { drawFallbackIdle(); return; }
         const bufLen = analyser.frequencyBinCount;
         if (!freqBufRef.current || freqBufRef.current.length !== bufLen) {
           freqBufRef.current = new Uint8Array(bufLen);
         }
         analyser.getByteFrequencyData(freqBufRef.current);
         const data = freqBufRef.current;
+        const w = wRef.current;
         ctx2d.clearRect(0, 0, w, H);
         const gap = Math.floor(w / 80);
         const barW = Math.max(1, gap - 1);
@@ -136,10 +130,10 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
           const v = data[bin] / 255;
           const barH = Math.max(2, v * H);
           const x = i * gap, y = H - barH;
-          ctx2d.fillStyle = `rgba(16,${Math.floor(150 + v * 61)},129,${0.12 + v * 0.88})`;
+          ctx2d.fillStyle = `rgba(16,${Math.floor(150 + v * 61)},129,${(0.12 + v * 0.88).toFixed(2)})`;
           ctx2d.fillRect(x, y, barW, barH);
           if (v > 0.25) {
-            ctx2d.fillStyle = `rgba(110,231,183,${v * 0.9})`;
+            ctx2d.fillStyle = `rgba(110,231,183,${(v * 0.9).toFixed(2)})`;
             ctx2d.fillRect(x, y, barW, 2);
           }
         }
@@ -147,7 +141,7 @@ export default function Visualizer({ isPlaying, getAnalyser, vizEnabled = true }
       rafRef.current = requestAnimationFrame(animate);
       return () => cancelAnimationFrame(rafRef.current);
     }
-  }, [getAnalyser, drawFallbackIdle]);
+  }, [isPlaying, vizEnabled, getAnalyser, drawFallbackIdle]);
 
   return <canvas ref={canvasRef} style={{ width: '100%', height: H, display: 'block' }} />;
 }

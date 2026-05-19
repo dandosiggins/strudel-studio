@@ -36,8 +36,6 @@ function drawSpectrum(ctx, w, h, data, analyser) {
     const alpha = (0.08 + v * 0.92).toFixed(2);
     const green = Math.round(150 + v * 61);
 
-    ctx.shadowColor = `rgba(52,211,153,${(v * 0.85).toFixed(2)})`;
-    ctx.shadowBlur = v > 0.15 ? 8 + v * 18 : 0;
     ctx.fillStyle = `rgba(52,${green},99,${alpha})`;
 
     const rx = cx + i * step;
@@ -46,7 +44,6 @@ function drawSpectrum(ctx, w, h, data, analyser) {
     ctx.fillRect(lx, cy - halfH, barW, halfH * 2);
 
     if (v > 0.2) {
-      ctx.shadowBlur = 0;
       ctx.fillStyle = `rgba(167,243,208,${Math.min(1, v * 1.3).toFixed(2)})`;
       ctx.fillRect(rx, cy - halfH, barW, 2);
       ctx.fillRect(rx, cy + halfH - 2, barW, 2);
@@ -54,7 +51,6 @@ function drawSpectrum(ctx, w, h, data, analyser) {
       ctx.fillRect(lx, cy + halfH - 2, barW, 2);
     }
   }
-  ctx.shadowBlur = 0;
 }
 
 function drawWaveform(ctx, w, h, waveData) {
@@ -68,8 +64,6 @@ function drawWaveform(ctx, w, h, waveData) {
 
   ctx.lineWidth = 1.5 + avgAmp * 3;
   ctx.strokeStyle = `rgba(52,211,153,${(0.55 + avgAmp * 0.45).toFixed(2)})`;
-  ctx.shadowColor = 'rgba(52,211,153,0.7)';
-  ctx.shadowBlur = 6 + avgAmp * 22;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -89,7 +83,6 @@ function drawWaveform(ctx, w, h, waveData) {
     }
   }
   ctx.stroke();
-  ctx.shadowBlur = 0;
 }
 
 function drawCircular(ctx, w, h, data, analyser, rotation) {
@@ -109,10 +102,7 @@ function drawCircular(ctx, w, h, data, analyser, rotation) {
   ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
   ctx.strokeStyle = `rgba(52,211,153,${(0.15 + bass * 0.45).toFixed(2)})`;
   ctx.lineWidth = 1.5 + bass * 3;
-  ctx.shadowColor = 'rgba(52,211,153,0.6)';
-  ctx.shadowBlur = bass > 0.2 ? 15 + bass * 25 : 5;
   ctx.stroke();
-  ctx.shadowBlur = 0;
 
   for (let i = 0; i < numBars; i++) {
     const bin = Math.floor((i / numBars) * usedBins);
@@ -128,14 +118,11 @@ function drawCircular(ctx, w, h, data, analyser, rotation) {
 
     ctx.strokeStyle = `rgba(52,${green},99,${alpha.toFixed(2)})`;
     ctx.lineWidth = Math.max(1, 1.5 + v * 2);
-    ctx.shadowColor = v > 0.6 ? `rgba(167,243,208,${(v * 0.8).toFixed(2)})` : 'transparent';
-    ctx.shadowBlur = v > 0.6 ? v * 15 : 0;
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
   }
-  ctx.shadowBlur = 0;
 }
 
 function drawParticles(ctx, w, h, data, particlesRef) {
@@ -179,12 +166,7 @@ function drawParticles(ctx, w, h, data, particlesRef) {
     ctx.beginPath();
     ctx.arc(p.x, p.y, Math.max(0.5, p.size * p.life), 0, Math.PI * 2);
     ctx.fillStyle = `rgba(${rb},${green},${rb},${alpha.toFixed(2)})`;
-    if (p.brightness > 0.5) {
-      ctx.shadowColor = 'rgba(167,243,208,0.6)';
-      ctx.shadowBlur = p.size * 3;
-    }
     ctx.fill();
-    ctx.shadowBlur = 0;
   }
 }
 
@@ -213,8 +195,6 @@ function drawTunnel(ctx, w, h, data, analyser, time) {
 
     ctx.lineWidth = lineW;
     ctx.strokeStyle = `rgba(52,${green},99,${alpha.toFixed(2)})`;
-    ctx.shadowColor = bass > 0.3 ? `rgba(52,211,153,${Math.min(1, alpha * 1.5).toFixed(2)})` : 'transparent';
-    ctx.shadowBlur = bass > 0.3 ? 10 + bass * 20 : 0;
 
     if (wobbleAmp > 2) {
       const segments = 64;
@@ -234,18 +214,14 @@ function drawTunnel(ctx, w, h, data, analyser, time) {
       ctx.stroke();
     }
   }
-  ctx.shadowBlur = 0;
 }
 
 // ── Canvas hook ────────────────────────────────────────────────────────────
 
-function useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef, vizEnabledRef }) {
-  const isPlayingRef = useRef(isPlaying);
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+function useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizEnabled, vizIndexRef, vizEnabledRef }) {
   const workerRef = useRef(null);
   const freqBufRef = useRef(null);
   const waveBufRef = useRef(null);
-  // fallback-only state
   const particlesRef = useRef([]);
   const lastDrawRef = useRef(0);
 
@@ -296,16 +272,20 @@ function useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexR
     }
   }, [canvasRef, edgeRef]);
 
-  // ── Render loop: setInterval → worker, or fallback RAF ────────────────
+  // ── Render loop: stopped completely when not active ───────────────────
   useEffect(() => {
     if (OFFSCREEN_OK) {
+      if (!isPlaying || !vizEnabled) {
+        workerRef.current?.postMessage({ type: 'draw', isPlaying: false, mode: 'perf', vizIdx: vizIndexRef.current });
+        if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
+        return;
+      }
       const id = setInterval(() => {
         const worker = workerRef.current;
         if (!worker) return;
-        const playing = isPlayingRef.current && vizEnabledRef.current;
         const vizIdx = vizIndexRef.current;
         const analyser = getAnalyser();
-        if (!playing || !analyser) {
+        if (!analyser) {
           worker.postMessage({ type: 'draw', isPlaying: false, mode: 'perf', vizIdx });
           if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
           return;
@@ -315,7 +295,6 @@ function useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexR
           freqBufRef.current = new Uint8Array(binCount);
         }
         analyser.getByteFrequencyData(freqBufRef.current);
-        // Edge glow stays on main thread — it's a DOM update, not canvas
         let bassSum = 0;
         for (let i = 0; i < 8; i++) bassSum += freqBufRef.current[i];
         const bass = bassSum / (8 * 255);
@@ -341,9 +320,16 @@ function useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexR
       }, FRAME_MS);
       return () => clearInterval(id);
     } else {
-      // Fallback: throttled RAF on main thread
       const canvas = canvasRef.current;
       if (!canvas) return;
+      if (!isPlaying || !vizEnabled) {
+        const dpr = window.devicePixelRatio || 1;
+        const w = canvas.width / dpr, h = canvas.height / dpr;
+        const ctx2d = canvas.getContext('2d');
+        if (ctx2d) { ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0); drawIdle(ctx2d, w, h); }
+        if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
+        return;
+      }
       let raf, rotation = 0, time = 0;
       function draw(timestamp) {
         if (document.hidden) { raf = requestAnimationFrame(draw); return; }
@@ -352,15 +338,11 @@ function useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexR
         lastDrawRef.current = timestamp;
         const dpr = window.devicePixelRatio || 1;
         const w = canvas.width / dpr, h = canvas.height / dpr;
-        const ctx = canvas.getContext('2d');
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const ctx2d = canvas.getContext('2d');
+        ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
         const analyser = getAnalyser();
         const vizIdx = vizIndexRef.current;
-        if (!analyser || !isPlayingRef.current || !vizEnabledRef.current) {
-          if (vizIdx === 3) particlesRef.current = [];
-          drawIdle(ctx, w, h);
-          return;
-        }
+        if (!analyser) { drawIdle(ctx2d, w, h); return; }
         time++; rotation += 0.005;
         const binCount = analyser.frequencyBinCount;
         if (!freqBufRef.current || freqBufRef.current.length !== binCount) freqBufRef.current = new Uint8Array(binCount);
@@ -377,11 +359,11 @@ function useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexR
         const fftSize = analyser.fftSize;
         if (!waveBufRef.current || waveBufRef.current.length !== fftSize) waveBufRef.current = new Uint8Array(fftSize);
         analyser.getByteTimeDomainData(waveBufRef.current);
-        if (vizIdx === 1) drawWaveform(ctx, w, h, waveBufRef.current);
-        else if (vizIdx === 2) drawCircular(ctx, w, h, freqData, analyser, rotation);
-        else if (vizIdx === 3) drawParticles(ctx, w, h, freqData, particlesRef);
-        else if (vizIdx === 4) drawTunnel(ctx, w, h, freqData, analyser, time);
-        else drawSpectrum(ctx, w, h, freqData, analyser);
+        if (vizIdx === 1) drawWaveform(ctx2d, w, h, waveBufRef.current);
+        else if (vizIdx === 2) drawCircular(ctx2d, w, h, freqData, analyser, rotation);
+        else if (vizIdx === 3) drawParticles(ctx2d, w, h, freqData, particlesRef);
+        else if (vizIdx === 4) drawTunnel(ctx2d, w, h, freqData, analyser, time);
+        else drawSpectrum(ctx2d, w, h, freqData, analyser);
       }
       raf = requestAnimationFrame(draw);
       return () => {
@@ -389,7 +371,7 @@ function useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexR
         if (edgeRef.current) edgeRef.current.style.boxShadow = 'none';
       };
     }
-  }, [canvasRef, edgeRef, getAnalyser, vizIndexRef, vizEnabledRef]);
+  }, [isPlaying, vizEnabled, canvasRef, edgeRef, getAnalyser, vizIndexRef, vizEnabledRef]);
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -476,7 +458,7 @@ export default function PerformanceMode({
     return () => window.removeEventListener('keydown', onKey);
   }, [isPlaying, isRecording, onPlay, onStop, onStartRecording, onStopRecording, onExit]);
 
-  useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizIndexRef, vizEnabledRef });
+  useWorkerCanvas({ canvasRef, edgeRef, getAnalyser, isPlaying, vizEnabled, vizIndexRef, vizEnabledRef });
 
   const playBlocked = !samplesLoaded || isPlaying || isRecording;
 
