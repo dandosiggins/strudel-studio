@@ -68,12 +68,12 @@ const LESSONS = [
     title: 'Your First Full Track',
     concept: 'Putting it all together',
     explanation:
-      'Melody with chord alternation, a drum loop, hi-hats for texture, and a filtered bass. This is the default pattern — now make it yours.',
+      'Melody with chord alternation, a drum loop, hi-hats for texture, and a Moog bass filtered low. This is the default pattern — now make it yours.',
     code: `stack(
   note("<c4 eb4> g4 bb4").sound("piano").slow(2).room(0.5),
   sound("bd sd bd sd").gain(0.8),
   sound("hh*8").gain(0.3),
-  note("c2 g2").sound("jvbass").slow(4).lpf(400)
+  note("c2 g2").sound("moog").gain(0.3).slow(4).lpf(400)
 )`,
   },
 
@@ -197,7 +197,7 @@ const LESSONS = [
   chord("<C F G Am>").sound("piano").slow(4).room(0.6),
   sound("bd sd bd sd").gain(0.8),
   sound("hh*8").gain(0.3).pan(sine),
-  note("c2 <g2 f2>").sound("jvbass").slow(4).lpf(800)
+  note("c2 <g2 f2>").sound("moog").gain(0.3).slow(4).lpf(800)
 )`,
   },
 ];

@@ -17,7 +17,7 @@ const PRESETS = [
   note("c5 ~ ~ ~ g4 ~ ~ ~ eb5 ~ ~ ~").sound("piano").room(0.95).gain(0.3).delay(0.7).slow(2),
 
   // Sub bass pulse
-  note("c1 ~ ~ ~ ~ ~ ~ ~").sound("jvbass").lpf(150).gain(0.7).slow(2),
+  note("c1 ~ ~ ~ ~ ~ ~ ~").sound("moog").gain(0.3).lpf(150).slow(2),
 
   // Very sparse percussion
   sound("bd ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~").gain(0.4).room(0.8)
@@ -28,7 +28,7 @@ const PRESETS = [
     description: 'Dark synthwave',
     code: `stack(
   note("<c3 eb3 g3 bb3> <f3 ab3 c4 eb4>").sound("supersaw").slow(4).room(0.5).lpf(1200).gain(0.6),
-  note("c2 ~ g2 ~ f2 ~ eb2 ~").sound("jvbass").lpf(600).gain(0.8).slow(2),
+  note("c2 ~ g2 ~ f2 ~ eb2 ~").sound("moog").gain(0.3).lpf(600).slow(2),
   sound("bd ~ bd ~").gain(0.85),
   sound("~ sd ~ sd").gain(0.7),
   sound("hh*8").gain(0.25).lpf(6000)

@@ -32,6 +32,7 @@ Additional rules:
 - Always use stack() for multiple layers
 - Keep patterns musical and interesting
 - Match the mood and style described
+- When using moog, always set .gain(0.3) or lower to prevent clipping
 
 Example output for "jazzy piano":
 // Try BPM: 90

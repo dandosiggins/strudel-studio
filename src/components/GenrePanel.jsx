@@ -68,13 +68,13 @@ const GENRES = [
       },
       {
         title: 'Dark Bassline',
-        concept: 'Synth bass locked with kick',
+        concept: 'Moog bass locked with kick',
         explanation: 'A repetitive low bassline locks with the kick',
         code: `stack(
   sound("bd bd bd bd").gain(0.9),
   sound("~ sd ~ sd").gain(0.7),
   sound("hh*16").gain(0.3),
-  note("c1 ~ c1 ~ eb1 ~ c1 ~").sound("jvbass").lpf(400).gain(0.8)
+  note("c1 ~ c1 ~ eb1 ~ c1 ~").sound("moog").gain(0.3).lpf(400)
 )`,
       },
       {
@@ -85,7 +85,7 @@ const GENRES = [
   sound("bd bd bd bd").gain(0.9),
   sound("~ sd ~ sd").gain(0.7),
   sound("hh*16").gain(0.25).lpf(8000),
-  note("c1 ~ c1 ~ eb1 ~ c1 ~").sound("jvbass").lpf(sine.range(200,800).slow(8)).gain(0.8),
+  note("c1 ~ c1 ~ eb1 ~ c1 ~").sound("moog").gain(0.3).lpf(sine.range(200,800).slow(8)),
   note("<c4 eb4 g4> ~ ~ ~").sound("supersaw").room(0.4).gain(0.5).slow(2)
 )`,
       },
@@ -281,14 +281,14 @@ const GENRES = [
 )`,
       },
       {
-        title: 'Synth Bassline',
-        concept: 'Synth bass locked with kick',
-        explanation: 'A punchy synth bass locks with the kick — the engine of house music',
+        title: 'Moog Bassline',
+        concept: 'Moog bass locked with kick',
+        explanation: 'A punchy moog bass locks with the kick — the engine of house music',
         code: `stack(
   sound("bd bd bd bd").gain(0.85),
   sound("~ hh ~ hh").gain(0.5),
   note("~ c4 ~ c4").sound("juno").gain(0.7).room(0.3),
-  note("c2 ~ c2 c2 ~ c2 c2 ~").sound("jvbass").lpf(800).gain(0.8)
+  note("c2 ~ c2 c2 ~ c2 c2 ~").sound("moog").gain(0.3).lpf(800)
 )`,
       },
       {
@@ -300,7 +300,7 @@ const GENRES = [
   sound("~ hh ~ hh").gain(0.5),
   sound("cp ~ ~ cp ~ ~ cp ~").gain(0.4),
   note("<c4 f4> <g4 bb4>").sound("juno").slow(2).room(0.4).gain(0.6),
-  note("c2 ~ c2 c2 ~ c2 c2 ~").sound("jvbass").lpf(sine.range(300,1200).slow(8)).gain(0.8)
+  note("c2 ~ c2 c2 ~ c2 c2 ~").sound("moog").gain(0.3).lpf(sine.range(300,1200).slow(8))
 )`,
       },
     ],
