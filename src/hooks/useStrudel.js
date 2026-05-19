@@ -36,7 +36,7 @@ export default function useStrudel() {
         setSamplesLoaded(true);
         // Pre-warm HTTP cache for common banks so the scheduler's 100ms window
         // doesn't race a cold network fetch on first play.
-        const PREFETCH_BANKS = ['piano', 'bd', 'sd', 'hh', 'cp', 'bass', 'gtr', 'juno', 'sitar', 'moog', 'jvbass', 'bass1', 'pad'];
+        const PREFETCH_BANKS = ['piano', 'bd', 'sd', 'hh', 'cp', 'bass', 'gtr', 'juno', 'sitar', 'jvbass', 'bass1', 'pad'];
         const all = soundMap.get();
         for (const name of PREFETCH_BANKS) {
           const bank = all[name]?.data?.samples;

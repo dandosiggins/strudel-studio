@@ -13,7 +13,7 @@ const SECTIONS = [
     items: [
       { code: 'note("c3 e3 g3").sound("gtr")', desc: 'guitar' },
       { code: 'note("c2 e2").sound("jvbass")', desc: 'bass guitar' },
-      { code: 'note("c3 e3 g3").sound("moog")', desc: 'moog bass' },
+      { code: 'note("c2 e2").sound("bass1")', desc: 'bass1 synth' },
       { code: 'note("c3 e3 g3").sound("juno")', desc: 'juno pad / strings' },
       { code: 'note("c3 e3 g3").sound("supersaw")', desc: 'supersaw synth' },
       { code: 'note("c3 e3 g3").sound("supersaw").room(0.4)', desc: 'pad synth' },

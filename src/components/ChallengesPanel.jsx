@@ -70,13 +70,12 @@ const BEGINNER = [
   {
     title: 'Full Track',
     goal: 'Build a track with melody, bass and drums all inside stack()',
-    hint: 'Use piano/moog for melody, bd+sd for drums, and a low note (c2, g2) for bass — all inside stack()',
+    hint: 'Use piano/jvbass for melody, bd+sd for drums, and a low note (c2, g2) for bass — all inside stack()',
     check: (code) => {
       if (!code.includes('stack(')) return false;
       if (!code.includes('note(')) return false;
       const hasDrums = /\bbd\b/.test(code) || /\bsd\b/.test(code);
       const hasBass =
-        code.includes('"moog"') ||
         code.includes('"bass') ||
         code.includes('"jvbass"') ||
         /note\(["'][^"']*[a-g]b?[12]["']/.test(code);
@@ -149,10 +148,10 @@ const INTERMEDIATE = [
       code.includes('stack(') && (code.match(/\.gain\(/g) || []).length >= 2,
   },
   {
-    title: 'Moog Bass Line',
-    goal: 'Create a bass line using the moog sound with a low-pass filter',
-    hint: 'Try note("c2 g2 f2 g2").sound("moog").lpf(600).slow(2)',
-    check: (code) => code.includes('"moog"') && code.includes('.lpf('),
+    title: 'Synth Bass Line',
+    goal: 'Create a bass line using jvbass or bass1 with a low-pass filter',
+    hint: 'Try note("c2 g2 f2 g2").sound("jvbass").lpf(600).slow(2)',
+    check: (code) => (code.includes('"jvbass"') || code.includes('"bass1"')) && code.includes('.lpf('),
   },
 ];
 
@@ -235,7 +234,8 @@ const ADVANCED = [
       const hasSynth =
         code.includes('"supersaw"') ||
         code.includes('"juno"') ||
-        code.includes('"moog"') ||
+        code.includes('"jvbass"') ||
+        code.includes('"bass1"') ||
         code.includes('"sawtooth"');
       return hasDrums && hasSynth;
     },

@@ -8,7 +8,7 @@ import { EditorView, hoverTooltip } from '@codemirror/view';
 const STRUDEL_DOCS = {
   // Sound & Notes
   note:      'Sets the pitch. e.g. note("c3 e3 g3") — use note names or MIDI numbers',
-  sound:     'Picks the instrument. e.g. .sound("piano") — try piano, bd, sd, hh, gtr, moog',
+  sound:     'Picks the instrument. e.g. .sound("piano") — try piano, bd, sd, hh, gtr, jvbass',
   stack:     'Plays multiple patterns simultaneously. e.g. stack(pattern1, pattern2)',
   cat:       'Plays patterns in sequence one after another. e.g. cat(pattern1, pattern2)',
   // Volume & Dynamics
